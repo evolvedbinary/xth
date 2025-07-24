@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    X Test Harness
+    Copyright (C) 2024, Evolved Binary Ltd
+
+    admin@evolvedbinary.com
+    https://www.evolvedbinary.com
+
+    SPDX-License-Identifier: BUSL-1.1
+
+    Use of this software is governed by the Business Source License 1.1
+    included in the LICENSE file and at www.mariadb.com/bsl11.
+
+    Change Date: 2029-06-06
+
+    On the date above, in accordance with the Business Source License, use
+    of this software will be governed by the Apache License, Version 2.0.
+
+    Additional Use Grant: Production use of the Licensed Work for a permitted
+    purpose. A Permitted Purpose is any purpose other than a Competing Use.
+    A Competing Use means making the Software available to others in a commercial
+    product or service that: substitutes for the Software; substitutes for any
+    other product or service we offer using the Software that exists as of the
+    date we make the Software available; or offers the same or substantially
+    similar functionality as the Software.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.evolvedbinary.xth</groupId>
+        <artifactId>xth-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../xth-parent</relativePath>
+    </parent>
+
+    <artifactId>xth-cli</artifactId>
+
+    <name>XTH CLI</name>
+    <description>Command Line Interface for the X Test Harness</description>
+
+    <scm>
+        <connection>scm:git:https://github.com/evolvedbinary/xth.git</connection>
+        <developerConnection>scm:git:https://github.com/evolvedbinary/xth.git</developerConnection>
+        <url>scm:git:https://github.com/evolvedbinary/xth.git</url>
+    </scm>
+
+    <properties>
+        <assemble.dir>${project.build.directory}/xth-${project.version}</assemble.dir>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-connector-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-connector-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-saxon-connector</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-parser-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-parser-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-qt3tests-parser</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-reporting-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-reporting-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-reporting-print</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-reporting-otr</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.jcip</groupId>
+            <artifactId>jcip-annotations</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <ignoredUnusedDeclaredDependencies>
+                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-saxon-connector:jar:${project.version}:runtime</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-qt3tests-parser:jar:${project.version}:runtime</ignoredUnusedDeclaredDependency>
+                    </ignoredUnusedDeclaredDependencies>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>appassembler-maven-plugin</artifactId>
+                <version>2.1.0</version>
+                <configuration>
+                    <repositoryLayout>flat</repositoryLayout>
+                    <repositoryName>lib</repositoryName>
+                    <binFileExtensions>
+                        <unix>.sh</unix>
+                    </binFileExtensions>
+                    <!-- defaultJvmSettings>
+                        <extraArguments>
+                            <extraArgument>-XX:+UseNUMA</extraArgument>
+                            <extraArgument>-XX:+UseZGC</extraArgument>
+                            <extraArgument>-XX:+HeapDumpOnOutOfMemoryError</extraArgument>
+                            <extraArgument>-XX:+ExitOnOutOfMemoryError</extraArgument>
+                        </extraArguments>
+                    </defaultJvmSetting -->
+                    <!-- licenseHeaderFile>BUSL-11-license.txt</licenseHeaderFile -->
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>appassembler-base</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>assemble</goal>
+                        </goals>
+                        <configuration>
+                            <assembleDirectory>${assemble.dir}</assembleDirectory>
+                            <programs>
+                                <program>
+                                    <id>xth</id>
+                                    <mainClass>com.evolvedbinary.xth.cli.CliMain</mainClass>
+                                    <jvmSettings>
+                                        <extraArguments>
+                                            <extraArgument>--enable-preview</extraArgument>
+                                            <extraArgument>-XX:+HeapDumpOnOutOfMemoryError</extraArgument>
+                                            <extraArgument>-XX:+ExitOnOutOfMemoryError</extraArgument>
+                                        </extraArguments>
+                                    </jvmSettings>
+                                </program>
+                            </programs>
+                            <configurationDirectory>etc</configurationDirectory>
+                            <copyConfigurationDirectory>true</copyConfigurationDirectory>
+                            <logsDirectory>log</logsDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

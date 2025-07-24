@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    X Test Harness
+    Copyright (C) 2024, Evolved Binary Ltd
+
+    admin@evolvedbinary.com
+    https://www.evolvedbinary.com
+
+    SPDX-License-Identifier: BUSL-1.1
+
+    Use of this software is governed by the Business Source License 1.1
+    included in the LICENSE file and at www.mariadb.com/bsl11.
+
+    Change Date: 2029-06-06
+
+    On the date above, in accordance with the Business Source License, use
+    of this software will be governed by the Apache License, Version 2.0.
+
+    Additional Use Grant: Production use of the Licensed Work for a permitted
+    purpose. A Permitted Purpose is any purpose other than a Competing Use.
+    A Competing Use means making the Software available to others in a commercial
+    product or service that: substitutes for the Software; substitutes for any
+    other product or service we offer using the Software that exists as of the
+    date we make the Software available; or offers the same or substantially
+    similar functionality as the Software.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.evolvedbinary.xth</groupId>
+        <artifactId>xth-parser</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>xth-qt3tests-parser</artifactId>
+
+    <name>XTH QT3 Tests Parser</name>
+    <description>XPath and XQuery 3.1 Test Suite Parser for the X Test Harness</description>
+
+    <scm>
+        <connection>scm:git:https://github.com/evolvedbinary/xth.git</connection>
+        <developerConnection>scm:git:https://github.com/evolvedbinary/xth.git</developerConnection>
+        <url>scm:git:https://github.com/evolvedbinary/xth.git</url>
+    </scm>
+
+    <properties>
+        <jaxb.api.version>4.0.2</jaxb.api.version>
+        <jaxb.impl.version>4.0.5</jaxb.impl.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-parser-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml</groupId>
+            <artifactId>aalto-xml</artifactId>
+            <version>1.3.3</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <version>${jaxb.api.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.xml.bind</groupId>
+            <artifactId>jaxb-impl</artifactId>
+            <version>${jaxb.impl.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <version>3.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <ignoredUnusedDeclaredDependencies>
+                        <ignoredUnusedDeclaredDependency>com.sun.xml.bind:jaxb-impl:jar:${jaxb.impl.version}:runtime</ignoredUnusedDeclaredDependency>
+                    </ignoredUnusedDeclaredDependencies>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-scm-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>clone-qt3-schema</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>checkout</goal>
+                        </goals>
+                        <configuration>
+                            <connectionUrl>scm:git:https://github.com/w3c/qt3tests.git</connectionUrl>
+                            <includes>catalog-schema.xsd,xml.xsd</includes>
+                            <checkoutDirectory>target/checkout/qt3tests</checkoutDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.evolvedbinary.maven.jvnet</groupId>
+                <artifactId>jaxb40-maven-plugin</artifactId>
+                <version>0.16.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-qt3-classes</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <schemaDirectory>target/checkout/qt3tests</schemaDirectory>
+                            <schemaIncludes>
+                                <schemaInclude>catalog-schema.xsd</schemaInclude>
+                            </schemaIncludes>
+                            <args>
+                                <arg>-Xph-default-locale</arg>
+                                <arg>en_GB</arg>
+                                <arg>-Xph-code-quality</arg>
+                                <arg>-Xph-fields-private</arg>
+                                <arg>-Xph-bean-validation11</arg>
+                            </args>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.helger</groupId>
+                        <artifactId>ph-jaxb-plugin</artifactId>
+                        <version>5.1.2</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <inherited>true</inherited>
+                <configuration>
+                    <licenseSets>
+                        <licenseSet>
+                            <header>../../xth-parent/XTH-BSL-11-license.template.txt</header>
+                            <excludes>
+                                <exclude>XTH-BSL-11-license.template.txt</exclude>
+                            </excludes>
+                        </licenseSet>
+                    </licenseSets>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
