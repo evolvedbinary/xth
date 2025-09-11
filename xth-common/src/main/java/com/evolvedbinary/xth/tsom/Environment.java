@@ -1,7 +1,8 @@
 package com.evolvedbinary.xth.tsom;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
-import java.util.Optional;
 
 public interface Environment {
 
@@ -36,9 +37,9 @@ public interface Environment {
     /**
      * Get the Context Item.
      *
-     * @return the Context Item if set, else {@link Optional#empty()}
+     * @return the Context Item.
      */
-    Optional<ContextItem> getContextItem();
+    @Nullable ContextItem getContextItem();
 
     /**
      * Get the Decimal Formats.
@@ -71,16 +72,16 @@ public interface Environment {
     /**
      * Get the Static Base URI.
      *
-     * @return the Static Base URI if set, else {@link Optional#empty()}
+     * @return the Static Base URI.
      */
-    Optional<StaticBaseUri> getStaticBaseUri();
+    @Nullable StaticBaseUri getStaticBaseUri();
 
     /**
      * Get the Collation.
      *
-     * @return the Collation if set, else {@link Optional#empty()}
+     * @return the Collation.
      */
-    Optional<Collation> getCollation();
+    @Nullable Collation getCollation();
 
     interface Builder {
         Builder addSchema(Schema schema);

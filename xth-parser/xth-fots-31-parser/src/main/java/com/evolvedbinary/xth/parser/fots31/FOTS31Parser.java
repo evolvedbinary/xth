@@ -6,7 +6,6 @@ import com.evolvedbinary.xth.tsom.ContextItemRole;
 import com.evolvedbinary.xth.tsom.ValidationMode;
 import com.evolvedbinary.xth.tsom.XsdVersion;
 import com.evolvedbinary.xth.tsom.impl.*;
-import jakarta.validation.constraints.Null;
 import org.jspecify.annotations.Nullable;
 import org.w3._2010._09.qt_fots_catalog.*;
 import org.w3._2010._09.qt_fots_catalog.Catalog.TestSet;
@@ -38,12 +37,13 @@ public class FOTS31Parser implements TestSuiteParser {
 
     @Override
     public void parse() throws IOException, ParserException {
+        final Path xmlSchemaFile = testSuiteDirectory.resolve(FOTS31Constants.XML_SCHEMA_FILE_NAME);
         final Path catalogSchemaFile = testSuiteDirectory.resolve(FOTS31Constants.CATALOG_SCHEMA_FILE_NAME);
         final Path catalogFile = testSuiteDirectory.resolve(FOTS31Constants.CATALOG_FILE_NAME);
 
-        final Catalog catalog = unmarshal(catalogSchemaFile, Catalog.class, catalogFile);
+        final Catalog catalog = unmarshal(new Path[] { xmlSchemaFile, catalogSchemaFile}, Catalog.class, catalogFile);
 
-        processEnvironments(catalog.getEnvironment());
+        final List<com.evolvedbinary.xth.tsom.Environment> environments = processEnvironments(catalog.getEnvironment());
         processTestSets(catalog.getTestSet());
     }
 
@@ -94,20 +94,16 @@ public class FOTS31Parser implements TestSuiteParser {
             return null;
         }
 
-        try {
-            return new com.evolvedbinary.xth.tsom.impl.SchemaImpl(
-                schema.getId(),
-                schema.getDescription().getValue(),
-                toTsom(schema.getCreated()),
-                toTsom(schema.getModified()),
-                new URI(schema.getUri()),
-                new URI(schema.getFile()),
-                toXsdVersion(schema.getXsdVersion()),
-                toTsom(schema.getRole())
-            );
-        } catch (final URISyntaxException e) {
-            throw new ParserException(e.getMessage(), e);
-        }
+        return new com.evolvedbinary.xth.tsom.impl.SchemaImpl(
+            schema.getId(),
+            schema.getDescription().getValue(),
+            toTsom(schema.getCreated()),
+            toTsom(schema.getModified()),
+            toUri(schema.getUri()),
+            toUri(schema.getFile()),
+            toXsdVersion(schema.getXsdVersion()),
+            toTsom(schema.getRole())
+        );
     }
 
     private static com.evolvedbinary.xth.tsom.@Nullable Source toTsom(@Nullable final SourceType source) throws ParserException {
@@ -115,20 +111,16 @@ public class FOTS31Parser implements TestSuiteParser {
             return null;
         }
 
-        try {
-            return new com.evolvedbinary.xth.tsom.impl.SourceImpl(
-                source.getId(),
-                source.getDescription().getValue(),
-                toTsom(source.getCreated()),
-                toTsom(source.getModified()),
-                toTsom(source.getRole()),
-                new URI(source.getFile()),
-                new URI(source.getUri()),
-                toTsom(source.getValidation())
-            );
-        } catch (final URISyntaxException e) {
-            throw new ParserException(e.getMessage(), e);
-        }
+        return new com.evolvedbinary.xth.tsom.impl.SourceImpl(
+            source.getId(),
+            source.getDescription().getValue(),
+            toTsom(source.getCreated()),
+            toTsom(source.getModified()),
+            toTsom(source.getRole()),
+            toUri(source.getFile()),
+            toUri(source.getUri()),
+            toTsom(source.getValidation())
+        );
     }
 
     private static com.evolvedbinary.xth.tsom.@Nullable Resource toTsom(@Nullable final ResourceType resource) throws ParserException {
@@ -136,20 +128,16 @@ public class FOTS31Parser implements TestSuiteParser {
             return null;
         }
 
-        try {
-            return new com.evolvedbinary.xth.tsom.impl.ResourceImpl(
-                resource.getId(),
-                resource.getDescription().getValue(),
-                toTsom(resource.getCreated()),
-                toTsom(resource.getModified()),
-                new URI(resource.getFile()),
-                new URI(resource.getUri()),
-                resource.getMediaType(),
-                resource.getEncoding()
-            );
-        } catch (final URISyntaxException e) {
-            throw new ParserException(e.getMessage(), e);
-        }
+        return new com.evolvedbinary.xth.tsom.impl.ResourceImpl(
+            resource.getId(),
+            resource.getDescription().getValue(),
+            toTsom(resource.getCreated()),
+            toTsom(resource.getModified()),
+            toUri(resource.getFile()),
+            toUri(resource.getUri()),
+            resource.getMediaType(),
+            resource.getEncoding()
+        );
     }
 
     private static com.evolvedbinary.xth.tsom.@Nullable Parameter toTsom(@Nullable final Param parameter) {
@@ -235,45 +223,38 @@ public class FOTS31Parser implements TestSuiteParser {
             queries.add(query.toString());
         }
 
-        try {
-            return new CollectionImpl(
-                new URI(collection.getUri()),
-                sources,
-                resources,
-                queries
-            );
-        } catch (final URISyntaxException e) {
-            throw new ParserException(e.getMessage(), e);
-        }
+        return new CollectionImpl(
+            toUri(collection.getUri()),
+            sources,
+            resources,
+            queries
+        );
     }
 
     private static com.evolvedbinary.xth.tsom.@Nullable StaticBaseUri toTsom(@Nullable final StaticBaseUri staticBaseUri) throws ParserException {
         if (staticBaseUri == null) {
             return null;
         }
-        try {
-            return new StaticBaseUriImpl(new URI(staticBaseUri.getUri()));
-        } catch (final URISyntaxException e) {
-            throw new ParserException(e.getMessage(), e);
-        }
+
+        return new StaticBaseUriImpl(toUri(staticBaseUri.getUri()));
     }
 
     private static com.evolvedbinary.xth.tsom.@Nullable Collation toTsom(final Collation collation) throws ParserException {
         if (collation == null) {
             return null;
         }
-        try {
-            return new CollationImpl(
-                new URI(collation.getUri()),
-                collation.isDefault()
-            );
-        } catch (final URISyntaxException e) {
-            throw new ParserException(e.getMessage(), e);
-        }
+
+        return new CollationImpl(
+            toUri(collation.getUri()),
+            collation.isDefault()
+        );
     }
 
-    private static XsdVersion toXsdVersion(final BigDecimal number) throws ParserException {
-        if (number.floatValue() == 1.0f) {
+    private static @Nullable XsdVersion toXsdVersion(@Nullable final BigDecimal number) throws ParserException {
+        if (number == null) {
+            return null;
+
+        } else if (number.floatValue() == 1.0f) {
             return XsdVersion.XSD_1_0;
 
         } else if (number.floatValue() == 1.1f) {
@@ -284,7 +265,10 @@ public class FOTS31Parser implements TestSuiteParser {
         }
     }
 
-    private static ValidationMode toTsom(final ValidationEnumType validation) {
+    private static @Nullable ValidationMode toTsom(@Nullable final ValidationEnumType validation) {
+        if (validation == null) {
+            return null;
+        }
         return switch (validation) {
             case ValidationEnumType.STRICT -> ValidationMode.STRICT;
             case ValidationEnumType.LAX -> ValidationMode.LAX;
@@ -320,5 +304,16 @@ public class FOTS31Parser implements TestSuiteParser {
             return null;
         }
         return str.charAt(0);
+    }
+
+    private static @Nullable URI toUri(@Nullable final String uri) throws ParserException {
+        if (uri == null) {
+            return null;
+        }
+        try {
+            return new URI(uri);
+        } catch (final URISyntaxException e) {
+            throw new ParserException(e.getMessage(), e);
+        }
     }
 }

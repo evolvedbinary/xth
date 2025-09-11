@@ -5,7 +5,8 @@ import javax.xml.validation.SchemaFactory;
 
 public class FOTS31Constants {
 
-    static final String CATALOG_SCHEMA_FILE_NAME = "catalog.xsd";
+    static final String XML_SCHEMA_FILE_NAME = "xml.xsd";
+    static final String CATALOG_SCHEMA_FILE_NAME = "catalog-schema.xsd";
     static final String CATALOG_FILE_NAME = "catalog.xml";
     static final String CATALOG_TEST_SUITE = "FOTS";
     static final String CATALOG_VERSION = "3.1";

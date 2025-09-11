@@ -1,10 +1,10 @@
 package com.evolvedbinary.xth.tsom.impl;
 
 import com.evolvedbinary.xth.tsom.*;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public abstract class AbstractEnvironment implements Environment {
 
@@ -12,19 +12,19 @@ public abstract class AbstractEnvironment implements Environment {
     private final List<Source> sources;
     private final List<Resource> resources;
     private final List<Parameter> parameters;
-    private final Optional<ContextItem> contextItem;
+    private final @Nullable ContextItem contextItem;
     private final List<DecimalFormat> decimalFormats;
     private final List<Namespace> namespaces;
     private final List<FunctionLibrary> functionLibraries;
     private final List<Collection> collections;
-    private final Optional<StaticBaseUri> staticBaseUri;
-    private final Optional<Collation> collation;
+    private final @Nullable StaticBaseUri staticBaseUri;
+    private final @Nullable Collation collation;
 
     protected AbstractEnvironment(final List<Schema> schemas, final List<Source> sources,
-                                  final List<Resource> resources, final List<Parameter> parameters, final Optional<ContextItem> contextItem,
-                                  final List<DecimalFormat> decimalFormats, final List<Namespace> namespaces,
-                                  final List<FunctionLibrary> functionLibraries, final List<Collection> collections,
-                                  final Optional<StaticBaseUri> staticBaseUri, final Optional<Collation> collation) {
+            final List<Resource> resources, final List<Parameter> parameters, final @Nullable ContextItem contextItem,
+            final List<DecimalFormat> decimalFormats, final List<Namespace> namespaces,
+            final List<FunctionLibrary> functionLibraries, final List<Collection> collections,
+            final @Nullable StaticBaseUri staticBaseUri, final @Nullable Collation collation) {
         this.schemas = schemas;
         this.sources = sources;
         this.resources = resources;
@@ -59,7 +59,7 @@ public abstract class AbstractEnvironment implements Environment {
     }
 
     @Override
-    public Optional<ContextItem> getContextItem() {
+    public @Nullable ContextItem getContextItem() {
         return contextItem;
     }
 
@@ -84,12 +84,12 @@ public abstract class AbstractEnvironment implements Environment {
     }
 
     @Override
-    public Optional<StaticBaseUri> getStaticBaseUri() {
+    public @Nullable StaticBaseUri getStaticBaseUri() {
         return staticBaseUri;
     }
 
     @Override
-    public Optional<Collation> getCollation() {
+    public @Nullable Collation getCollation() {
         return collation;
     }
 
@@ -98,13 +98,13 @@ public abstract class AbstractEnvironment implements Environment {
         protected List<Source> sources = null;
         protected List<Resource> resources = null;
         protected List<Parameter> parameters = null;
-        protected Optional<ContextItem> contextItem = Optional.empty();
+        protected @Nullable ContextItem contextItem = null;
         protected List<DecimalFormat> decimalFormats = null;
         protected List<Namespace> namespaces = null;
         protected List<FunctionLibrary> functionLibraries = null;
         protected List<Collection> collections = null;
-        protected Optional<StaticBaseUri> staticBaseUri = Optional.empty();
-        protected Optional<Collation> collation = Optional.empty();
+        protected @Nullable StaticBaseUri staticBaseUri = null;
+        protected @Nullable Collation collation = null;
 
         @Override
         public Builder addSchema(final Schema schema) {
@@ -143,8 +143,8 @@ public abstract class AbstractEnvironment implements Environment {
         }
 
         @Override
-        public Builder setContextItem(final ContextItem contextItem) {
-            this.contextItem = Optional.ofNullable(contextItem);
+        public Builder setContextItem(@Nullable final ContextItem contextItem) {
+            this.contextItem = contextItem;
             return this;
         }
 
@@ -185,14 +185,14 @@ public abstract class AbstractEnvironment implements Environment {
         }
 
         @Override
-        public Builder setStaticBaseUri(final StaticBaseUri staticBaseUri) {
-            this.staticBaseUri = Optional.ofNullable(staticBaseUri);
+        public Builder setStaticBaseUri(@Nullable final StaticBaseUri staticBaseUri) {
+            this.staticBaseUri = staticBaseUri;
             return this;
         }
 
         @Override
-        public Builder setCollation(final Collation collation) {
-            this.collation = Optional.ofNullable(collation);
+        public Builder setCollation(@Nullable final Collation collation) {
+            this.collation = collation;
             return this;
         }
     }
