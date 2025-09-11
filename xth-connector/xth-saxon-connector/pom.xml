@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.evolvedbinary.xth</groupId>
+        <artifactId>xth-connector</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>xth-saxon-connector</artifactId>
+
+    <name>XTH Saxon Connector</name>
+    <description>Saxon Connector for the X Test Harness</description>
+
+    <scm>
+        <connection>scm:git:https://github.com/evolvedbinary/xth.git</connection>
+        <developerConnection>scm:git:https://github.com/evolvedbinary/xth.git</developerConnection>
+        <url>scm:git:https://github.com/evolvedbinary/xth.git</url>
+    </scm>
+
+    <properties>
+        <saxon.version>12.8</saxon.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-connector-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <id>saxon-he</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>net.sf.saxon</groupId>
+                    <artifactId>Saxon-HE</artifactId>
+                    <version>${saxon.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>saxon-pe</id>
+            <dependencies>
+                <dependency>
+                    <groupId>net.sf.saxon</groupId>
+                    <artifactId>Saxon-PE</artifactId>
+                    <version>${saxon.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>saxon-ee</id>
+            <dependencies>
+                <dependency>
+                    <groupId>net.sf.saxon</groupId>
+                    <artifactId>Saxon-EE</artifactId>
+                    <version>${saxon.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
+</project>

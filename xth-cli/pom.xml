@@ -12,6 +12,7 @@
     </parent>
 
     <artifactId>xth-cli</artifactId>
+
     <name>XTH CLI</name>
     <description>Command Line Interface for the X Test Harness</description>
 
@@ -29,9 +30,21 @@
         </dependency>
 
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-parser-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-fots-31-parser</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.jspecify</groupId>
             <artifactId>jspecify</artifactId>
-            <version>1.0.0</version>
         </dependency>
     </dependencies>
 

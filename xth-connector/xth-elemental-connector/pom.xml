@@ -6,16 +6,15 @@
 
     <parent>
         <groupId>com.evolvedbinary.xth</groupId>
-        <artifactId>xth-parent</artifactId>
+        <artifactId>xth-connector</artifactId>
         <version>1.0.0-SNAPSHOT</version>
-        <relativePath>xth-parent</relativePath>
     </parent>
 
-    <artifactId>xth</artifactId>
+    <artifactId>xth-elemental-connector</artifactId>
     <packaging>pom</packaging>
 
-    <name>XTH (X Test Harness)</name>
-    <description>Test harness for running the W3C XPath, XQuery, and XSLT tests</description>
+    <name>XTH Elemental Connector</name>
+    <description>Elemental Connectors for the X Test Harness</description>
 
     <scm>
         <connection>scm:git:https://github.com/evolvedbinary/xth.git</connection>
@@ -24,11 +23,8 @@
     </scm>
 
     <modules>
-        <module>xth-parent</module>
-        <module>xth-cli</module>
-        <module>xth-common</module>
-        <module>xth-parser</module>
-        <module>xth-connector</module>
+        <module>xth-elemental-embedded-connector</module>
+        <module>xth-elemental-server-connector</module>
     </modules>
 
 </project>

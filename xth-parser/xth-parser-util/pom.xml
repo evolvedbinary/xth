@@ -6,16 +6,14 @@
 
     <parent>
         <groupId>com.evolvedbinary.xth</groupId>
-        <artifactId>xth-parent</artifactId>
+        <artifactId>xth-parser</artifactId>
         <version>1.0.0-SNAPSHOT</version>
-        <relativePath>xth-parent</relativePath>
     </parent>
 
-    <artifactId>xth</artifactId>
-    <packaging>pom</packaging>
+    <artifactId>xth-parser-util</artifactId>
 
-    <name>XTH (X Test Harness)</name>
-    <description>Test harness for running the W3C XPath, XQuery, and XSLT tests</description>
+    <name>XTH Parser Util</name>
+    <description>Utilities for working with the Test Suite Parsers for the X Test Harness</description>
 
     <scm>
         <connection>scm:git:https://github.com/evolvedbinary/xth.git</connection>
@@ -23,12 +21,16 @@
         <url>scm:git:https://github.com/evolvedbinary/xth.git</url>
     </scm>
 
-    <modules>
-        <module>xth-parent</module>
-        <module>xth-cli</module>
-        <module>xth-common</module>
-        <module>xth-parser</module>
-        <module>xth-connector</module>
-    </modules>
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-parser-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+        </dependency>
+    </dependencies>
 
 </project>
