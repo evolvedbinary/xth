@@ -1,0 +1,18 @@
+package com.evolvedbinary.xth.tsom;
+
+public enum DependencyType {
+    CALENDAR,
+    COLLECTION_STABILITY,
+    DEFAULT_LANGUAGE,
+    DIRECTORY_AS_COLLECTION_URI,
+    FEATURE,
+    FORMAT_INTEGER_SEQUENCE,
+    LANGUAGE,
+    LIMITS,
+    SPEC,
+    SCHEMA_AWARE,
+    UNICODE_NORMALIZATION_FORM,
+    UNICODE_VERSION,
+    XML_VERSION,
+    XSD_VERSION;
+}

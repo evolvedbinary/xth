@@ -8,4 +8,8 @@ public interface Base {
      * @return the xml:id
      */
     String getXmlId();
+
+    interface Builder {
+        void setXmlId(String xmlId);
+    }
 }

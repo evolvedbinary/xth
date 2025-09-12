@@ -3,14 +3,22 @@ package com.evolvedbinary.xth.parser.fots31;
 import com.evolvedbinary.xth.parser.api.ParserException;
 import com.evolvedbinary.xth.parser.api.TestSuiteParser;
 import com.evolvedbinary.xth.tsom.ContextItemRole;
+import com.evolvedbinary.xth.tsom.DependencyType;
 import com.evolvedbinary.xth.tsom.ValidationMode;
 import com.evolvedbinary.xth.tsom.XsdVersion;
+import com.evolvedbinary.xth.tsom.assertion.AssertEmpty;
+import com.evolvedbinary.xth.tsom.assertion.AssertFalse;
+import com.evolvedbinary.xth.tsom.assertion.AssertTrue;
+import com.evolvedbinary.xth.tsom.assertion.impl.*;
 import com.evolvedbinary.xth.tsom.impl.*;
+import jakarta.xml.bind.JAXBElement;
 import org.jspecify.annotations.Nullable;
 import org.w3._2010._09.qt_fots_catalog.*;
-import org.w3._2010._09.qt_fots_catalog.Catalog.TestSet;
+import org.w3._2010._09.qt_fots_catalog.Error;
+import org.w3._2010._09.qt_fots_catalog.Module;
+import org.w3c.dom.Element;
 
-import javax.swing.*;
+import javax.xml.namespace.QName;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -44,24 +52,26 @@ public class FOTS31Parser implements TestSuiteParser {
         final Catalog catalog = unmarshal(new Path[] { xmlSchemaFile, catalogSchemaFile}, Catalog.class, catalogFile);
 
         final List<com.evolvedbinary.xth.tsom.Environment> environments = processEnvironments(catalog.getEnvironment());
-        processTestSets(catalog.getTestSet());
+        final List<com.evolvedbinary.xth.tsom.TestSet> testSets = processTestSets(catalog.getTestSet());
     }
 
     private List<com.evolvedbinary.xth.tsom.Environment> processEnvironments(final List<Environment> environments) throws ParserException {
         final List<com.evolvedbinary.xth.tsom.Environment> results = new ArrayList<>(environments.size());
         for (final Environment environment : environments) {
-            results.add(processEnvironment(environment));
+            results.add(toTsom(environment));
         }
         return results;
     }
 
-    private com.evolvedbinary.xth.tsom.Environment processEnvironment(final Environment environment) throws ParserException {
-        final String name = environment.getName();
-        if (name == null) {
-            throw new ParserException("Environments specified in the catalog must have a name");
+    private static com.evolvedbinary.xth.tsom.Environment toTsom(final Environment environment) throws ParserException {
+        final String reference = environment.getRef();
+        if (reference != null) {
+            return EnvironmentReferenceImpl.builder(reference)
+                .build();
         }
 
-        final com.evolvedbinary.xth.tsom.Environment.Builder builder = NamedEnvironmentImpl.builder(name);
+        final String name = environment.getName();
+        final com.evolvedbinary.xth.tsom.EnvironmentDefinition.Builder builder = EnvironmentDefinitionImpl.builder(name);
         for (final Object obj : environment.getSchemaOrSourceOrResource()) {
             switch (obj) {
                 case SchemaType schema -> builder.addSchema(toTsom(schema));
@@ -76,17 +86,54 @@ public class FOTS31Parser implements TestSuiteParser {
                 case StaticBaseUri staticBaseUri -> builder.setStaticBaseUri(toTsom(staticBaseUri));
                 case Collation collation -> builder.setCollation(toTsom(collation));
                 default ->
-                    throw new ParserException("Unable environment object: " + obj.getClass().getName());
+                    throw new ParserException("Unexpected environment object: " + obj.getClass().getName());
             }
         }
 
         return builder.build();
     }
 
-    private void processTestSets(final List<TestSet> testSets) {
-        for (final TestSet testSet: testSets) {
-
+    private List<com.evolvedbinary.xth.tsom.TestSet> processTestSets(final List<Catalog.TestSet> testSets) throws IOException, ParserException {
+        final List<com.evolvedbinary.xth.tsom.TestSet> results = new ArrayList<>(testSets.size());
+        for (final Catalog.TestSet testSet: testSets) {
+            results.add(processTestSet(testSet));
         }
+        return results;
+    }
+
+    private com.evolvedbinary.xth.tsom.TestSet processTestSet(final Catalog.TestSet catalogTestSet) throws IOException, ParserException {
+        final TestSet testSet = unmarshalTestSetFile(catalogTestSet.getFile());
+        return toTsom(catalogTestSet.getName(), catalogTestSet.getFile(), testSet);
+    }
+
+    private static com.evolvedbinary.xth.tsom.TestSet toTsom(final String name, final String file, final TestSet testSet) throws ParserException {
+        final com.evolvedbinary.xth.tsom.TestSet.Builder builder = TestSetImpl.builder(name);
+        builder.setFile(toUri(file));
+        builder.setCovers(testSet.getCovers());
+        builder.setCovers30(testSet.getCovers30());
+        for (final Object obj : testSet.getDescriptionOrLinkOrEnvironment()) {
+            switch (obj) {
+                case Description description -> builder.setDescription(description.getValue());
+                case Link link -> builder.addLink(toTsom(link));
+                case Environment environment -> builder.addEnvironment(toTsom(environment));
+                case Dependency dependency -> builder.addDependency(toTsom(dependency));
+                default -> throw new ParserException("Unexpected test-set object: " + obj.getClass().getName());
+
+            }
+        }
+        for (final TestCase testCase : testSet.getTestCase()) {
+            builder.addTestCase(toTsom(testCase));
+        }
+
+        return builder.build();
+    }
+
+    private TestSet unmarshalTestSetFile(final String filePath) throws IOException {
+        final Path xmlSchemaFile = testSuiteDirectory.resolve(FOTS31Constants.XML_SCHEMA_FILE_NAME);
+        final Path catalogSchemaFile = testSuiteDirectory.resolve(FOTS31Constants.CATALOG_SCHEMA_FILE_NAME);
+        final Path testSuiteFile = testSuiteDirectory.resolve(filePath);
+
+        return unmarshal(new Path[] { xmlSchemaFile, catalogSchemaFile}, TestSet.class, testSuiteFile);
     }
 
     private static com.evolvedbinary.xth.tsom.@Nullable Schema toTsom(@Nullable final SchemaType schema) throws ParserException {
@@ -96,7 +143,7 @@ public class FOTS31Parser implements TestSuiteParser {
 
         return new com.evolvedbinary.xth.tsom.impl.SchemaImpl(
             schema.getId(),
-            schema.getDescription().getValue(),
+            schema.getDescription() == null ? null : schema.getDescription().getValue(),
             toTsom(schema.getCreated()),
             toTsom(schema.getModified()),
             toUri(schema.getUri()),
@@ -113,7 +160,7 @@ public class FOTS31Parser implements TestSuiteParser {
 
         return new com.evolvedbinary.xth.tsom.impl.SourceImpl(
             source.getId(),
-            source.getDescription().getValue(),
+            source.getDescription() == null ? null : source.getDescription().getValue(),
             toTsom(source.getCreated()),
             toTsom(source.getModified()),
             toTsom(source.getRole()),
@@ -130,7 +177,7 @@ public class FOTS31Parser implements TestSuiteParser {
 
         return new com.evolvedbinary.xth.tsom.impl.ResourceImpl(
             resource.getId(),
-            resource.getDescription().getValue(),
+            resource.getDescription() == null ? null : resource.getDescription().getValue(),
             toTsom(resource.getCreated()),
             toTsom(resource.getModified()),
             toUri(resource.getFile()),
@@ -285,8 +332,15 @@ public class FOTS31Parser implements TestSuiteParser {
 
     private static @Nullable List<com.evolvedbinary.xth.tsom.Modified> toTsom(final List<Modified> modifieds) {
         return modifieds.stream()
-            .map(modified -> new ModifiedImpl(modified.getBy(), modified.getOn(), modified.getChange()))
+            .map(FOTS31Parser::toTsom)
             .collect(Collectors.toUnmodifiableList());
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable Modified toTsom(@Nullable final Modified modified) {
+        if (modified == null) {
+            return null;
+        }
+        return new ModifiedImpl(modified.getBy(), modified.getOn(), modified.getChange());
     }
 
     private static com.evolvedbinary.xth.tsom.@Nullable Role toTsom(@Nullable final String role) {
@@ -297,6 +351,232 @@ public class FOTS31Parser implements TestSuiteParser {
         } else {
             return new VariableRoleImpl(role);
         }
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable Link toTsom(@Nullable final Link link) {
+        if (link == null) {
+            return null;
+        }
+        return new LinkImpl(toTsom(link.getType()), link.getDocument(), link.getIdref(), link.getSectionNumber());
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable DependencyType toTsom(@Nullable final DependencyEnumType dependencyType) {
+        if (dependencyType == null) {
+            return null;
+        }
+        return DependencyType.valueOf(dependencyType.name());
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable Dependency toTsom(@Nullable final Dependency dependency) throws ParserException {
+        if (dependency == null) {
+            return null;
+        }
+        return new DependencyImpl(
+            toTsom(dependency.getType()),
+            dependency.getValue(),
+            dependency.isSatisfied()
+        );
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable TestCase toTsom(@Nullable final TestCase testCase) throws ParserException {
+        if (testCase == null) {
+            return null;
+        }
+
+        final com.evolvedbinary.xth.tsom.TestCase.Builder builder = TestCaseImpl.builder(testCase.getName());
+        builder.setCovers(testCase.getCovers());
+        builder.setCovers30(testCase.getCovers30());
+        builder.setDescription(testCase.getDescription().getValue());
+        builder.setCreated(toTsom(testCase.getCreated()));
+        for (final Modified modified : testCase.getModified()) {
+            builder.addModified(toTsom(modified));
+        }
+        for (final Object obj : testCase.getEnvironmentOrModuleOrDependency()) {
+            switch (obj) {
+                case Environment environment -> builder.addEnvironment(toTsom(environment));
+                case Module module -> builder.addModule(toTsom(module));
+                case Dependency dependency -> builder.addDependency(toTsom(dependency));
+                default -> throw new ParserException("Unexpected test-case object: " + obj.getClass().getName());
+            }
+        }
+        builder.setTest(toTsom(testCase.getTest()));
+        builder.setResult(toTsom(testCase.getResult()));
+        return builder.build();
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable Module toTsom(@Nullable final Module module) throws ParserException {
+        if (module == null) {
+            return null;
+        }
+        return new ModuleImpl(
+            module.getUri(),
+            toUri(module.getLocation()),
+            toUri(module.getFile())
+        );
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable Test toTsom(@Nullable final Test test) throws ParserException {
+        if (test == null) {
+            return null;
+        }
+        return new TestImpl(
+            test.getValue(),
+            toUri(test.getFile())
+        );
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable Assertion toTsom(@Nullable final Result result) throws ParserException {
+        if (result == null) {
+            return null;
+        }
+
+        final JAXBElement<?> abstractAssertion = result.getAbstractAssertion();
+        return toAssertion(abstractAssertion);
+    }
+
+    public static com.evolvedbinary.xth.tsom.@Nullable Assertion toAssertion(@Nullable final JAXBElement<?> abstractAssertion) throws ParserException {
+        return switch (abstractAssertion.getValue()) {
+            case Assert assrt -> toTsom(assrt);
+            case AssertEq assertEq -> toTsom(assertEq);
+            case AssertCount assertCount -> toTsom(assertCount);
+            case AssertDeepEq assertDeepEq -> toTsom(assertDeepEq);
+            case AssertPermutation assertPermutation -> toTsom(assertPermutation);
+            case AssertXml assertXml -> toTsom(assertXml);
+            case SerializationMatches serializationMatches -> toTsom(serializationMatches);
+            case AssertSerializationError assertSerializationError -> toTsom(assertSerializationError);
+            case AssertType assertType -> toTsom(assertType);
+            case AssertStringValue assertStringValue -> toTsom(assertStringValue);
+            case Error error -> toTsom(error);
+            case SequenceOfAssertionsType sequenceOfAssertionsType -> toTsom(abstractAssertion.getName(), sequenceOfAssertionsType);
+            case Element element -> toAssertion(element);
+            case Not not -> toTsom(not);
+            default -> throw new ParserException("Unexpected assertion object: " + abstractAssertion.getValue().getClass().getName());
+        };
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable Assertion toAssertion(final Element element) throws ParserException {
+        if (ObjectFactory._AssertEmpty_QNAME.getLocalPart().equals(element.getLocalName()) && ObjectFactory._AssertEmpty_QNAME.getNamespaceURI().equals(element.getNamespaceURI())) {
+            return AssertEmpty.INSTANCE;
+
+        } else if (ObjectFactory._AssertTrue_QNAME.getLocalPart().equals(element.getLocalName()) && ObjectFactory._AssertTrue_QNAME.getNamespaceURI().equals(element.getNamespaceURI())) {
+            return AssertTrue.INSTANCE;
+
+        } else if (ObjectFactory._AssertFalse_QNAME.getLocalPart().equals(element.getLocalName()) && ObjectFactory._AssertFalse_QNAME.getNamespaceURI().equals(element.getNamespaceURI())) {
+            return AssertFalse.INSTANCE;
+        } else {
+            throw new ParserException("Unexpected assertion object: " + element.getLocalName());
+        }
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable Assert toTsom(@Nullable final Assert assrt) {
+        if (assrt == null) {
+            return null;
+        }
+        return new AssertImpl(assrt.getValue());
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertEqual toTsom(@Nullable final AssertEq assertEq) {
+        if (assertEq == null) {
+            return null;
+        }
+        return new AssertEqualImpl(assertEq.getValue());
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertCount toTsom(@Nullable final AssertCount assertCount) {
+        if (assertCount == null) {
+            return null;
+        }
+        return new AssertCountImpl(assertCount.getValue());
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertDeepEqual toTsom(@Nullable final AssertDeepEq assertDeepEq) {
+        if (assertDeepEq == null) {
+            return null;
+        }
+        return new AssertDeepEqualImpl(assertDeepEq.getValue());
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertPermutation toTsom(@Nullable final AssertPermutation assertPermutation) {
+        if (assertPermutation == null) {
+            return null;
+        }
+        return new AssertPermutationImpl(assertPermutation.getValue());
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertXml toTsom(@Nullable final AssertXml assertXml) throws ParserException {
+        if (assertXml == null) {
+            return null;
+        }
+        return new AssertXmlImpl(
+                toUri(assertXml.getFile()),
+                assertXml.isIgnorePrefixes() == null ? false : assertXml.isIgnorePrefixes(),
+                assertXml.getValue()
+        );
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertSerializationMatches toTsom(@Nullable final SerializationMatches serializationMatches) throws ParserException {
+        if (serializationMatches == null) {
+            return null;
+        }
+        return new AssertSerializationMatchesImpl(
+            toUri(serializationMatches.getFile()),
+            serializationMatches.getFlags(),
+            serializationMatches.getValue()
+        );
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertSerializationError toTsom(@Nullable final AssertSerializationError assertSerializationError) {
+        if (assertSerializationError == null) {
+            return null;
+        }
+        return new AssertSerializationErrorImpl(assertSerializationError.getCode());
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertType toTsom(@Nullable final AssertType assertType) {
+        if (assertType == null) {
+            return null;
+        }
+        return new AssertTypeImpl(assertType.getValue());
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertStringValue toTsom(@Nullable final AssertStringValue assertStringValue) {
+        if (assertStringValue == null) {
+            return null;
+        }
+        return new AssertStringValueImpl(assertStringValue.getValue(), assertStringValue.isNormalizeSpace());
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertError toTsom(@Nullable final Error error) {
+        if (error == null) {
+            return null;
+        }
+        return new AssertErrorImpl(error.getCode());
+    }
+
+    private static com.evolvedbinary.xth.tsom.@Nullable Assertion toTsom(final QName sequenceOfAssertionsTypeName, @Nullable final SequenceOfAssertionsType sequenceOfAssertionsType) throws ParserException {
+        if (sequenceOfAssertionsType == null) {
+            return null;
+        }
+
+        final List<JAXBElement<?>> subAssertions = sequenceOfAssertionsType.getAbstractAssertion();
+        final List<com.evolvedbinary.xth.tsom.Assertion> subResults = new ArrayList<>(subAssertions.size());
+        for (final JAXBElement<?> subAssertion : subAssertions) {
+            subResults.add(toAssertion(subAssertion));
+        }
+        if (ObjectFactory._AllOf_QNAME.equals(sequenceOfAssertionsTypeName)) {
+            return new AssertAllOfImpl(subResults);
+        } else if (ObjectFactory._AnyOf_QNAME.equals(sequenceOfAssertionsTypeName)) {
+            return new AssertAnyOfImpl(subResults);
+        } else {
+            throw new ParserException("Unexpected sequence of assertions object: " + sequenceOfAssertionsTypeName);
+        }
+    }
+
+    private static com.evolvedbinary.xth.tsom.assertion.@Nullable AssertNot toTsom(@Nullable final Not not) throws ParserException {
+        if (not == null) {
+            return null;
+        }
+        return new AssertNotImpl(toAssertion(not.getAbstractAssertion()));
     }
 
     private static @Nullable Character firstCharacter(@Nullable final String str) {
