@@ -27,6 +27,7 @@
         <module>xth-connector-api</module>
         <module>xth-elemental-connector</module>
         <module>xth-saxon-connector</module>
+        <module>xth-connector-util</module>
     </modules>
 
 </project>

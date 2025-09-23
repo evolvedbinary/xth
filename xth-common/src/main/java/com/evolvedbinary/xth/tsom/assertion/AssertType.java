@@ -1,7 +1,8 @@
 package com.evolvedbinary.xth.tsom.assertion;
 
 import com.evolvedbinary.xth.tsom.Assertion;
+import com.evolvedbinary.xth.tsom.assertion.impl.AssertTypeImpl;
 
-public interface AssertType extends Assertion {
+public sealed interface AssertType extends Assertion permits AssertTypeImpl {
     String getType();
 }

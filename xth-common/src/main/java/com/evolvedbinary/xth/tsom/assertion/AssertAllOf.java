@@ -1,4 +1,6 @@
 package com.evolvedbinary.xth.tsom.assertion;
 
-public interface AssertAllOf extends SequenceOfAssertions {
+import com.evolvedbinary.xth.tsom.assertion.impl.AssertAllOfImpl;
+
+public sealed interface AssertAllOf extends SequenceOfAssertions permits AssertAllOfImpl {
 }

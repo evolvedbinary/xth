@@ -1,7 +1,6 @@
 package com.evolvedbinary.xth.parser.fots31;
 
 import com.evolvedbinary.xth.parser.api.AbstractTestSuiteParser;
-import com.evolvedbinary.xth.parser.api.ParserEventListener;
 import com.evolvedbinary.xth.parser.api.ParserException;
 import com.evolvedbinary.xth.parser.api.TestSuiteParser;
 import com.evolvedbinary.xth.tsom.ContextItemRole;
@@ -29,6 +28,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.evolvedbinary.xth.parser.fots31.JAXBUtil.unmarshal;
@@ -48,24 +48,34 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
 
     @Override
     public void parse() throws IOException, ParserException {
+        final UUID parseId = generateUniqueId();
         final Path xmlSchemaFile = testSuiteDirectory.resolve(FOTS31Constants.XML_SCHEMA_FILE_NAME);
         final Path catalogSchemaFile = testSuiteDirectory.resolve(FOTS31Constants.CATALOG_SCHEMA_FILE_NAME);
         final Path catalogFile = testSuiteDirectory.resolve(FOTS31Constants.CATALOG_FILE_NAME);
 
-        emitEvent(ParserEventListener::startParseCatalog);
+        // Start parsing
+        emitEvent(listener -> listener.startParseCatalog(parseId, catalogFile));
 
         final Catalog catalog = unmarshal(new Path[] { xmlSchemaFile, catalogSchemaFile}, Catalog.class, catalogFile);
 
-        processEnvironments(catalog.getEnvironment());
-        processTestSets(catalog.getTestSet());
+        // Process Catalog Environment(s)
+        emitEvent(listener -> listener.startParseCatalogEnvironments(parseId));
+        processEnvironments(parseId, catalog.getEnvironment());
+        emitEvent(listener -> listener.endParseCatalogEnvironments(parseId));
 
-        emitEvent(ParserEventListener::endParseCatalog);
+        // Process Catalog TestSet(s)
+        emitEvent(listener -> listener.startParseTestSets(parseId));
+        processTestSets(parseId, catalog.getTestSet());
+        emitEvent(listener -> listener.endParseTestSets(parseId));
+
+        // Finish parsing
+        emitEvent(listener -> listener.endParseCatalog(parseId));
     }
 
-    private void processEnvironments(final List<Environment> environments) throws ParserException {
+    private void processEnvironments(final UUID parseId, final List<Environment> environments) throws ParserException {
         for (final Environment environment : environments) {
             final com.evolvedbinary.xth.tsom.Environment tsomEnvironment = toTsom(environment);
-            emitEvent(listener -> listener.catalogEnvironment(tsomEnvironment));
+            emitEvent(listener -> listener.catalogEnvironment(parseId, tsomEnvironment));
         }
     }
 
@@ -99,17 +109,30 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
         return builder.build();
     }
 
-    private void processTestSets(final List<Catalog.TestSet> testSets) throws IOException, ParserException {
-        // TODO(AR) load test sets in parallel?
+    private void processTestSets(final UUID parseId, final List<Catalog.TestSet> testSets) throws IOException, ParserException {
+        // TODO(AR) process Test Sets in parallel?
         for (final Catalog.TestSet testSet: testSets) {
-            final com.evolvedbinary.xth.tsom.TestSet tsomTestSet = processTestSet(testSet);
-            emitEvent(listener -> listener.testSet(tsomTestSet));
+            processTestSet(parseId, testSet);
         }
     }
 
-    private com.evolvedbinary.xth.tsom.TestSet processTestSet(final Catalog.TestSet catalogTestSet) throws IOException, ParserException {
+    private void processTestSet(final UUID parseId, final Catalog.TestSet catalogTestSet) throws IOException, ParserException {
+        final UUID testSetId = generateUniqueId();
         final TestSet testSet = unmarshalTestSetFile(catalogTestSet.getFile());
-        return toTsom(catalogTestSet.getName(), catalogTestSet.getFile(), testSet);
+        final com.evolvedbinary.xth.tsom.TestSet tsomTestSet = toTsom(catalogTestSet.getName(), catalogTestSet.getFile(), testSet);
+
+        emitEvent(listener -> listener.startParseTestSet(parseId, testSetId, tsomTestSet));
+        // TODO(AR) process test cases in parallel?
+        for (final TestCase testCase : testSet.getTestCase()) {
+            processTestCase(parseId, testSetId, testCase);
+        }
+        emitEvent(listener -> listener.endParseTestSet(parseId, testSetId));
+    }
+
+    private void processTestCase(final UUID parseId, final UUID testSetId, final TestCase testCase) throws ParserException {
+        final UUID testCaseId = generateUniqueId();
+        final com.evolvedbinary.xth.tsom.TestCase tsomTestCase = toTsom(testCase);
+        emitEvent(listener -> listener.testCase(parseId, testSetId, testCaseId, tsomTestCase));
     }
 
     private static com.evolvedbinary.xth.tsom.TestSet toTsom(final String name, final String file, final TestSet testSet) throws ParserException {
@@ -127,10 +150,6 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
 
             }
         }
-        for (final TestCase testCase : testSet.getTestCase()) {
-            builder.addTestCase(toTsom(testCase));
-        }
-
         return builder.build();
     }
 
@@ -462,13 +481,13 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
 
     private static com.evolvedbinary.xth.tsom.@Nullable Assertion toAssertion(final Element element) throws ParserException {
         if (ObjectFactory._AssertEmpty_QNAME.getLocalPart().equals(element.getLocalName()) && ObjectFactory._AssertEmpty_QNAME.getNamespaceURI().equals(element.getNamespaceURI())) {
-            return AssertEmpty.INSTANCE;
+            return AssertEmptyImpl.INSTANCE;
 
         } else if (ObjectFactory._AssertTrue_QNAME.getLocalPart().equals(element.getLocalName()) && ObjectFactory._AssertTrue_QNAME.getNamespaceURI().equals(element.getNamespaceURI())) {
-            return AssertTrue.INSTANCE;
+            return AssertTrueImpl.INSTANCE;
 
         } else if (ObjectFactory._AssertFalse_QNAME.getLocalPart().equals(element.getLocalName()) && ObjectFactory._AssertFalse_QNAME.getNamespaceURI().equals(element.getNamespaceURI())) {
-            return AssertFalse.INSTANCE;
+            return AssertFalseImpl.INSTANCE;
         } else {
             throw new ParserException("Unexpected assertion object: " + element.getLocalName());
         }
@@ -558,7 +577,7 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
         }
 
         if ("*".equals(error.getCode())) {
-            return AssertAnyError.INSTANCE;
+            return AssertAnyErrorImpl.INSTANCE;
         } else {
             return new AssertErrorCodeImpl(error.getCode());
         }

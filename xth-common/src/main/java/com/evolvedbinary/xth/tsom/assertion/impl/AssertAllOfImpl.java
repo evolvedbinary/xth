@@ -5,7 +5,7 @@ import com.evolvedbinary.xth.tsom.assertion.AssertAllOf;
 
 import java.util.List;
 
-public class AssertAllOfImpl extends AbstractSequenceOfAssertions implements AssertAllOf {
+public final class AssertAllOfImpl extends AbstractSequenceOfAssertions implements AssertAllOf {
     public AssertAllOfImpl(final List<Assertion> assertions) {
         super(assertions);
     }

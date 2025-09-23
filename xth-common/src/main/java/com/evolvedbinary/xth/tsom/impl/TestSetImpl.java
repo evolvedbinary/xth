@@ -18,11 +18,10 @@ public class TestSetImpl extends AbstractBase implements TestSet {
     private final List<Link> links;
     private final List<Environment> environments;
     private final List<Dependency> dependencies;
-    private final List<TestCase> testCases;
 
     public TestSetImpl(final String xmlId, final String name, final URI file, final List<String> covers,
             final List<String> covers30, @Nullable final String description, final List<Link> links,
-            final List<Environment> environments, final List<Dependency> dependencies, final List<TestCase> testCases) {
+            final List<Environment> environments, final List<Dependency> dependencies) {
         super(xmlId);
         this.name = name;
         this.file = file;
@@ -32,7 +31,6 @@ public class TestSetImpl extends AbstractBase implements TestSet {
         this.links = links;
         this.environments = environments;
         this.dependencies = dependencies;
-        this.testCases = testCases;
     }
 
     @Override
@@ -75,11 +73,6 @@ public class TestSetImpl extends AbstractBase implements TestSet {
         return dependencies;
     }
 
-    @Override
-    public List<TestCase> getTestCases() {
-        return testCases;
-    }
-
     public static TestSetImpl.Builder builder(final String name) {
         return new TestSetImpl.Builder(name);
     }
@@ -93,7 +86,6 @@ public class TestSetImpl extends AbstractBase implements TestSet {
         private List<Link> links = null;
         private List<Environment> environments = null;
         private List<Dependency> dependencies = null;
-        private List<TestCase> testCases = null;
 
         private Builder(final String name) {
             this.name = name;
@@ -144,14 +136,6 @@ public class TestSetImpl extends AbstractBase implements TestSet {
         }
 
         @Override
-        public void addTestCase(final TestCase testCase) {
-            if (testCases == null) {
-                testCases = new ArrayList<>();
-            }
-            testCases.add(testCase);
-        }
-
-        @Override
         public TestSet build() {
             return new TestSetImpl(
                 xmlId,
@@ -162,8 +146,7 @@ public class TestSetImpl extends AbstractBase implements TestSet {
                 description,
                 toImmutableList(links),
                 toImmutableList(environments),
-                toImmutableList(dependencies),
-                toImmutableList(testCases)
+                toImmutableList(dependencies)
             );
         }
     }

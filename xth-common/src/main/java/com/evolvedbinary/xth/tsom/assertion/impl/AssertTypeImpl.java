@@ -2,7 +2,7 @@ package com.evolvedbinary.xth.tsom.assertion.impl;
 
 import com.evolvedbinary.xth.tsom.assertion.AssertType;
 
-public class AssertTypeImpl implements AssertType {
+public final class AssertTypeImpl implements AssertType {
     private final String type;
 
     public AssertTypeImpl(final String type) {

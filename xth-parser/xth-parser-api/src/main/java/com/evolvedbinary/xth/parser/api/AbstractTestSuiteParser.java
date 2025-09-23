@@ -3,6 +3,7 @@ package com.evolvedbinary.xth.parser.api;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 public abstract class AbstractTestSuiteParser implements TestSuiteParser {
@@ -25,5 +26,9 @@ public abstract class AbstractTestSuiteParser implements TestSuiteParser {
             final ParserEventListener eventListener = iterator.next();
             dispatch.accept(eventListener);
         }
+    }
+
+    protected UUID generateUniqueId() {
+        return UUID.randomUUID();
     }
 }

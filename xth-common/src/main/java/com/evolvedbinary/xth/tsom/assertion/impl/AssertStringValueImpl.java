@@ -2,7 +2,7 @@ package com.evolvedbinary.xth.tsom.assertion.impl;
 
 import com.evolvedbinary.xth.tsom.assertion.AssertStringValue;
 
-public class AssertStringValueImpl implements AssertStringValue {
+public final class AssertStringValueImpl implements AssertStringValue {
     private final String stringValue;
     private final boolean normalizeSpace;
 

@@ -5,7 +5,7 @@ import com.evolvedbinary.xth.tsom.assertion.SequenceOfAssertions;
 
 import java.util.List;
 
-public abstract class AbstractSequenceOfAssertions implements SequenceOfAssertions {
+public sealed abstract class AbstractSequenceOfAssertions implements SequenceOfAssertions permits AssertAnyOfImpl, AssertAllOfImpl {
     private final List<Assertion> assertions;
 
     protected AbstractSequenceOfAssertions(final List<Assertion> assertions) {

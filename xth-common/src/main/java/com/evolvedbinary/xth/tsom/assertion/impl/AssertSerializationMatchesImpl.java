@@ -5,7 +5,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 
-public class AssertSerializationMatchesImpl implements AssertSerializationMatches {
+public final class AssertSerializationMatchesImpl implements AssertSerializationMatches {
 
     @Nullable private final URI file;
     private final String regularExpression;

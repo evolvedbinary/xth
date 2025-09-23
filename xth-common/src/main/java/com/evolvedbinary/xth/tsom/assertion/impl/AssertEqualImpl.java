@@ -2,7 +2,7 @@ package com.evolvedbinary.xth.tsom.assertion.impl;
 
 import com.evolvedbinary.xth.tsom.assertion.AssertEqual;
 
-public class AssertEqualImpl implements AssertEqual {
+public final class AssertEqualImpl implements AssertEqual {
     private final String xpathExpression;
 
     public AssertEqualImpl(final String xpathExpression) {

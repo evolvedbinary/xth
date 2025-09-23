@@ -5,7 +5,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 
-public class AssertXmlImpl implements AssertXml {
+public final class AssertXmlImpl implements AssertXml {
 
     @Nullable private final URI file;
     private final boolean ignorePrefixes;

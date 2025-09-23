@@ -2,15 +2,24 @@ package com.evolvedbinary.xth.cli;
 
 import com.evolvedbinary.xth.configuration.Configuration;
 import com.evolvedbinary.xth.configuration.XthProperties;
+import com.evolvedbinary.xth.connector.api.Connector;
+import com.evolvedbinary.xth.connector.util.ConnectorFactory;
+import com.evolvedbinary.xth.parser.api.ParserEventListener;
 import com.evolvedbinary.xth.parser.api.ParserException;
 import com.evolvedbinary.xth.parser.api.TestSuiteParser;
 import com.evolvedbinary.xth.parser.util.TestSuiteParserFactory;
 import com.evolvedbinary.xth.scm.Git;
+import com.evolvedbinary.xth.tsom.Environment;
+import com.evolvedbinary.xth.tsom.TestCase;
+import com.evolvedbinary.xth.tsom.TestSet;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Path;
+import java.util.EventListener;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Command Line Interface for X Test Harness.
@@ -23,10 +32,11 @@ public class CliMain {
 
     private final static int EXIT_CODE_UNABLE_TO_LOAD_PROPERTIES = 1;
     private final static int EXIT_CODE_INVALID_ARGUMENTS = 2;
-    private final static int EXIT_CODE_GIT_REPO_ERROR = 3;
-    private final static int EXIT_CODE_PARSER_PROVIDER_IO_ERROR = 4;
-    private final static int EXIT_CODE_NO_SUITABLE_PARSER_AVAILABLE = 5;
-    private final static int EXIT_CODE_PARSE_ERROR = 6;
+    private final static int EXIT_CODE_NO_CONNECTORS = 3;
+    private final static int EXIT_CODE_GIT_REPO_ERROR = 4;
+    private final static int EXIT_CODE_PARSER_PROVIDER_IO_ERROR = 5;
+    private final static int EXIT_CODE_NO_SUITABLE_PARSER_AVAILABLE = 6;
+    private final static int EXIT_CODE_PARSE_ERROR = 7;
 
 
     public static void main(final String[] args) {
@@ -56,6 +66,15 @@ public class CliMain {
         // TODO(AR) merge arguments and xthProperties to create a Configuration - report if the config is incomplete
         final Configuration configuration = createConfiguration(xthProperties, arguments);
 
+        // TODO(AR) select connectors based on user args and capabilities
+        final List<Connector> connectors = ConnectorFactory.connectors();
+        if (connectors == null) {
+            exit(EXIT_CODE_NO_CONNECTORS, new IllegalStateException("No connectors available"), stdErr);
+        }
+        for (final Connector connector : connectors) {
+            stdOut.println(String.format("Loaded connector: %s", connector.getConnectorName()));
+        }
+
         // TODO(AR) only print usage if we are missing args or have an invalid combo of args
         usage(xthProperties, stdOut);
 
@@ -68,6 +87,7 @@ public class CliMain {
             return;
         }
 
+        // TODO(AR) allow multiple test sets to be run?
         // TODO(AR) auto-detect what sort of test suite it is
         @Nullable final TestSuiteParser testSuiteParser;
         try {
@@ -81,8 +101,63 @@ public class CliMain {
             return;
         }
 
-        System.out.println("Detected Test Suite in: " + gitRepoPath);
-        System.out.println("Using parser: " + testSuiteParser.getParserName());
+        stdOut.println("Detected Test Suite in: " + gitRepoPath);
+        stdOut.println("Using parser: " + testSuiteParser.getParserName());
+
+        testSuiteParser.addEventListener(new ParserEventListener() {
+
+            @Override
+            public void startParseCatalog(final UUID parseId, final Path catalogFile) {
+                stdOut.println(String.format("Starting to parse Catalog (%s): %s", parseId, catalogFile));
+            }
+
+            @Override
+            public void startParseCatalogEnvironments(final UUID parseId) {
+                stdOut.println(String.format("* Starting to parse Global Environments (%s)...", parseId));
+            }
+
+            @Override
+            public void catalogEnvironment(final UUID parseId, final Environment environment) {
+                stdOut.println(String.format("\tGlobal Environment (%s): %s", parseId, environment.getName()));
+            }
+
+            @Override
+            public void endParseCatalogEnvironments(final UUID parseId) {
+                stdOut.println(String.format("* Finished parsing Global Environments (%s).", parseId));
+            }
+
+            @Override
+            public void startParseTestSets(final UUID parseId) {
+                stdOut.println(String.format("* Starting to parse TestSets (%s)...", parseId));
+            }
+
+            @Override
+            public void startParseTestSet(final UUID parseId, final UUID testSetId, final TestSet testSet) {
+                stdOut.println(String.format("\tStarting to parse Test Set (%s / %s): %s", parseId, testSetId, testSet.getName()));
+            }
+
+            @Override
+            public void testCase(final UUID parseId, final UUID testSetId, final UUID testCaseId, final TestCase testCase) {
+                stdOut.println(String.format("\t\tTest Case (%s / %s / %s): %s", parseId, testSetId, testCaseId, testCase.getName()));
+            }
+
+            @Override
+            public void endParseTestSet(final UUID parseId, final UUID testSetId) {
+                stdOut.println(String.format("\tFinished parsing Test Set (%s / %s).", parseId, testSetId));
+            }
+
+            @Override
+            public void endParseTestSets(final UUID parseId) {
+                stdOut.println(String.format("* Finished parsing TestSets (%s).", parseId));
+            }
+
+            @Override
+            public void endParseCatalog(final UUID parseId) {
+                stdOut.println(String.format("Finished parsing Catalog (%s).", parseId));
+            }
+        });
+
+
 
         // TODO(AR) parse the test suite with the appropriate parser - maybe this should generate a number of tasks in a queue?
         try {

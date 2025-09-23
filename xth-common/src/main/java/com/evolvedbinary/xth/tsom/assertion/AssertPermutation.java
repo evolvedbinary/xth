@@ -1,7 +1,8 @@
 package com.evolvedbinary.xth.tsom.assertion;
 
 import com.evolvedbinary.xth.tsom.Assertion;
+import com.evolvedbinary.xth.tsom.assertion.impl.AssertPermutationImpl;
 
-public interface AssertPermutation extends Assertion {
+public sealed interface AssertPermutation extends Assertion permits AssertPermutationImpl {
     String getSequence();
 }

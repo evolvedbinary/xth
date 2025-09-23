@@ -14,7 +14,6 @@ public interface TestSet {
     List<Link> getLinks();
     List<Environment> getEnvironments();
     List<Dependency> getDependencies();
-    List<TestCase> getTestCases();
 
     interface Builder {
         void setFile(URI file);
@@ -24,7 +23,6 @@ public interface TestSet {
         void addLink(Link link);
         void addEnvironment(Environment environment);
         void addDependency(Dependency dependency);
-        void addTestCase(TestCase testCase);
         TestSet build();
     }
 }

@@ -2,7 +2,7 @@ package com.evolvedbinary.xth.tsom.assertion.impl;
 
 import com.evolvedbinary.xth.tsom.assertion.Assert;
 
-public class AssertImpl implements Assert {
+public final class AssertImpl implements Assert {
     final String xpathExpression;
 
     public AssertImpl(final String xpathExpression) {

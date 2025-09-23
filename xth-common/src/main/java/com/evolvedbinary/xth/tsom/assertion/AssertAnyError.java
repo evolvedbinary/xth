@@ -1,5 +1,6 @@
 package com.evolvedbinary.xth.tsom.assertion;
 
-public interface AssertAnyError extends AssertError {
-    AssertAnyError INSTANCE = new AssertAnyError() {};
+import com.evolvedbinary.xth.tsom.assertion.impl.AssertAnyErrorImpl;
+
+public sealed interface AssertAnyError extends AssertError permits AssertAnyErrorImpl {
 }

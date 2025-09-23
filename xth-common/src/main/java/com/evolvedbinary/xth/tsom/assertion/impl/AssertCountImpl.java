@@ -4,7 +4,7 @@ import com.evolvedbinary.xth.tsom.assertion.AssertCount;
 
 import java.math.BigInteger;
 
-public class AssertCountImpl implements AssertCount {
+public final class AssertCountImpl implements AssertCount {
     private final BigInteger count;
 
     public AssertCountImpl(final BigInteger count) {

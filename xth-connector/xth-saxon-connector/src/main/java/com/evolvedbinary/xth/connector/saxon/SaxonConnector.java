@@ -65,7 +65,29 @@ public class SaxonConnector implements Connector {
     private final Map<String, Map<String, EnvironmentDefinition>> testSetEnvironments = new ConcurrentHashMap<>();
     private final Map<String, AtomicReference<EnvironmentSetupState>> testSetEnvironmentsSetupLocks = new ConcurrentHashMap<>();
 
-    void initalize(final List<EnvironmentDefinition> globalEnvironments) {
+    @Override
+    public String getConnectorName() {
+        return getClass().getSimpleName();
+    }
+
+    @Override
+    public String getImplementationName() throws ConnectorException {
+        if (this.processor == null) {
+            throw new ConnectorException("Connection must be initialized first");
+        }
+        return this.processor.getSaxonEdition();
+    }
+
+    @Override
+    public String getImplementationVersion() throws ConnectorException {
+        if (this.processor == null) {
+            throw new ConnectorException("Connection must be initialized first");
+        }
+        return this.processor.getSaxonProductVersion();
+    }
+
+    @Override
+    public void initialize(final List<EnvironmentDefinition> globalEnvironments) {
         this.globalEnvironments = new HashMap<>(globalEnvironments.size());
         for (final EnvironmentDefinition globalEnvironment : globalEnvironments) {
             this.globalEnvironments.put(globalEnvironment.getName(), globalEnvironment);
@@ -85,7 +107,8 @@ public class SaxonConnector implements Connector {
         this.assertXpathCompiler.declareVariable(RESULT_QNAME);
     }
 
-    void executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
+    @Override
+    public void executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
         final XQueryCompiler xqueryCompiler = processor.newXQueryCompiler();
 
         final Map<String, EnvironmentDefinition> testSetEnvironments = getTestSetEnvironments(testSet);
