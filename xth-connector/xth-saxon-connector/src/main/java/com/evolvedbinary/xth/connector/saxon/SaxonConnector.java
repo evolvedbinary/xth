@@ -189,7 +189,6 @@ public class SaxonConnector implements Connector {
             case AssertAnyOf assertAnyOf -> testAssertAnyOf(assertAnyOf, actualResult);
             case AssertAllOf assertAllOf -> testAssertAllOf(assertAllOf, actualResult);
             case AssertNot assertNot -> !testAssertion(assertNot.getAssertion(), actualResult);
-            default -> throw new ConnectorException("Unexpected assertion: " + assertion.getClass().getName());
         };
     }
 
@@ -207,7 +206,7 @@ public class SaxonConnector implements Connector {
         };
     }
 
-    private boolean testAssertCount(final AssertCount assertCount, final EvaluationResult actualResult) throws SaxonApiException {
+    private boolean testAssertCount(final AssertCount assertCount, final EvaluationResult actualResult) {
         return switch (actualResult) {
             case EvaluationResultFailure actualResultIsFailure -> false;
             case EvaluationResultSuccess actualResultIsSuccess -> assertCount.getCount().equals(BigInteger.valueOf(actualResultIsSuccess.value.size()));
@@ -285,14 +284,14 @@ public class SaxonConnector implements Connector {
         }
     }
 
-    private boolean testAssertSerializationError(final AssertSerializationError assertSerializationError, final EvaluationResult actualResult) throws SaxonApiException {
+    private boolean testAssertSerializationError(final AssertSerializationError assertSerializationError, final EvaluationResult actualResult) {
         return switch (actualResult) {
             case EvaluationResultFailure actualResultIsFailure -> false;
             case EvaluationResultSuccess actualResultIsSuccess -> testAssertSerializationErrorSuccess(assertSerializationError, actualResultIsSuccess);
         };
     }
 
-    private boolean testAssertSerializationErrorSuccess(final AssertSerializationError assertSerializationError, final EvaluationResultSuccess actualResultSuccess) throws SaxonApiException {
+    private boolean testAssertSerializationErrorSuccess(final AssertSerializationError assertSerializationError, final EvaluationResultSuccess actualResultSuccess) {
         final Serializer serializer = assertXpathCompiler.getProcessor().newSerializer();
         serializer.setOutputProperty(Serializer.Property.METHOD, "xml");
         serializer.setOutputProperty(Serializer.Property.INDENT, "no");
@@ -305,7 +304,7 @@ public class SaxonConnector implements Connector {
         }
     }
 
-    private boolean testAssertEmpty(final AssertEmpty assertEmpty, final EvaluationResult actualResult) throws SaxonApiException {
+    private boolean testAssertEmpty(final AssertEmpty assertEmpty, final EvaluationResult actualResult) {
         return switch (actualResult) {
             case EvaluationResultFailure actualResultIsFailure -> false;
             case EvaluationResultSuccess actualResultIsSuccess -> actualResultIsSuccess.value.isEmpty();
@@ -339,14 +338,14 @@ public class SaxonConnector implements Connector {
         };
     }
 
-    private boolean testAssertStringValue(final AssertStringValue assertStringValue, final EvaluationResult actualResult) throws SaxonApiException {
+    private boolean testAssertStringValue(final AssertStringValue assertStringValue, final EvaluationResult actualResult) {
         return switch (actualResult) {
             case EvaluationResultFailure actualResultIsFailure -> false;
             case EvaluationResultSuccess actualResultIsSuccess -> testAssertStringValueSuccess(assertStringValue, actualResultIsSuccess);
         };
     }
 
-    private boolean testAssertStringValueSuccess(final AssertStringValue assertStringValue, final EvaluationResultSuccess actualResultSuccess) throws SaxonApiException {
+    private boolean testAssertStringValueSuccess(final AssertStringValue assertStringValue, final EvaluationResultSuccess actualResultSuccess) {
         String resultString;
         if (actualResultSuccess.value instanceof XdmItem) {
             resultString = ((XdmItem) actualResultSuccess.value).getStringValue();
@@ -373,12 +372,11 @@ public class SaxonConnector implements Connector {
         return resultString.equals(assertionString);
     }
 
-    private boolean testAssertError(final AssertError assertError, final EvaluationResult actualResult) throws SaxonApiException, ConnectorException {
+    private boolean testAssertError(final AssertError assertError, final EvaluationResult actualResult) {
         return switch (actualResult) {
             case EvaluationResultFailure actualResultIsFailure -> switch(assertError) {
                 case AssertAnyError assertAnyError -> true;
                 case AssertErrorCode assertErrorCode -> testAssertErrorCode(assertErrorCode, actualResultIsFailure);
-                default -> throw new ConnectorException(String.format("Unknown AssertError type: %s", assertError.getClass().getName()));
             };
             case EvaluationResultSuccess actualResultIsSuccess -> false;
         };
@@ -958,7 +956,7 @@ public class SaxonConnector implements Connector {
         }
 
         @Override
-        public javax.xml.transform.@Nullable Source resolve(final String href, final String base) /*throws TransformerException*/ {
+        public javax.xml.transform.@Nullable Source resolve(final String href, final String base) {
             if (sourceDocuments != null) {
                 final XdmNode node = sourceDocuments.get(href);
                 if (node != null) {
