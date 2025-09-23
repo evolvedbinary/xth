@@ -78,11 +78,11 @@ public interface EnvironmentDefinition extends Environment {
     @Nullable StaticBaseUri getStaticBaseUri();
 
     /**
-     * Get the Collation.
+     * Get the Collations.
      *
-     * @return the Collation.
+     * @return the Collations.
      */
-    @Nullable Collation getCollation();
+    List<Collation> getCollations();
 
     interface Builder extends Environment.Builder {
         Builder addSchema(Schema schema);
@@ -95,6 +95,6 @@ public interface EnvironmentDefinition extends Environment {
         Builder addFunctionLibrary(FunctionLibrary functionLibrary);
         Builder addCollection(Collection collection);
         Builder setStaticBaseUri(StaticBaseUri staticBaseUri);
-        Builder setCollation(Collation collation);
+        Builder addCollation(Collation collation);
     }
 }

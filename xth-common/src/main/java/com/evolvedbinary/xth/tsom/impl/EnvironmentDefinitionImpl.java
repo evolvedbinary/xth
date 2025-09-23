@@ -20,13 +20,13 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
     private final List<FunctionLibrary> functionLibraries;
     private final List<Collection> collections;
     private final @Nullable StaticBaseUri staticBaseUri;
-    private final @Nullable Collation collation;
+    private final List<Collation> collations;
 
     private EnvironmentDefinitionImpl(@Nullable final String name, final List<Schema> schemas, final List<Source> sources,
             final List<Resource> resources, final List<Parameter> parameters, final @Nullable ContextItem contextItem,
             final List<DecimalFormat> decimalFormats, final List<Namespace> namespaces,
             final List<FunctionLibrary> functionLibraries, final List<Collection> collections,
-            final @Nullable StaticBaseUri staticBaseUri, final @Nullable Collation collation) {
+            final @Nullable StaticBaseUri staticBaseUri, final List<Collation> collations) {
         super(name);
         this.schemas = schemas;
         this.sources = sources;
@@ -38,7 +38,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
         this.functionLibraries = functionLibraries;
         this.collections = collections;
         this.staticBaseUri = staticBaseUri;
-        this.collation = collation;
+        this.collations = collations;
     }
 
     @Override
@@ -92,8 +92,8 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
     }
 
     @Override
-    public @Nullable Collation getCollation() {
-        return collation;
+    public List<Collation> getCollations() {
+        return collations;
     }
 
     public static Builder builder(final String name) {
@@ -111,12 +111,13 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
         protected List<FunctionLibrary> functionLibraries = null;
         protected List<Collection> collections = null;
         protected @Nullable StaticBaseUri staticBaseUri = null;
-        protected @Nullable Collation collation = null;
+        protected List<Collation> collations = null;
 
         private Builder(@Nullable final String name) {
             super(name);
         }
 
+        @Override
         public Builder addSchema(final Schema schema) {
             if (schemas == null) {
                 schemas = new ArrayList<>();
@@ -125,6 +126,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
             return this;
         }
 
+        @Override
         public Builder addSource(final Source source) {
             if (sources == null) {
                 sources = new ArrayList<>();
@@ -133,6 +135,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
             return this;
         }
 
+        @Override
         public Builder addResource(final Resource resource) {
             if (resources == null) {
                 resources = new ArrayList<>();
@@ -141,6 +144,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
             return this;
         }
 
+        @Override
         public Builder addParameter(final Parameter parameter) {
             if (parameters == null) {
                 parameters = new ArrayList<>();
@@ -149,11 +153,13 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
             return this;
         }
 
+        @Override
         public Builder setContextItem(@Nullable final ContextItem contextItem) {
             this.contextItem = contextItem;
             return this;
         }
 
+        @Override
         public Builder addDecimalFormat(final DecimalFormat decimalFormat) {
             if (decimalFormats == null) {
                 decimalFormats = new ArrayList<>();
@@ -162,6 +168,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
             return this;
         }
 
+        @Override
         public Builder addNamespace(final Namespace namespace) {
             if (namespaces == null) {
                 namespaces = new ArrayList<>();
@@ -170,6 +177,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
             return this;
         }
 
+        @Override
         public Builder addFunctionLibrary(final FunctionLibrary functionLibrary) {
             if (functionLibraries == null) {
                 functionLibraries = new ArrayList<>();
@@ -178,6 +186,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
             return this;
         }
 
+        @Override
         public Builder addCollection(final Collection collection) {
             if (collections == null) {
                 collections = new ArrayList<>();
@@ -186,16 +195,22 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
             return this;
         }
 
+        @Override
         public Builder setStaticBaseUri(@Nullable final StaticBaseUri staticBaseUri) {
             this.staticBaseUri = staticBaseUri;
             return this;
         }
 
-        public Builder setCollation(@Nullable final Collation collation) {
-            this.collation = collation;
+        @Override
+        public Builder addCollation(final Collation collation) {
+            if (collations == null) {
+                collations = new ArrayList<>();
+            }
+            collations.add(collation);
             return this;
         }
 
+        @Override
         public Environment build() {
             return new EnvironmentDefinitionImpl(
                 name,
@@ -209,7 +224,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
                 toImmutableList(functionLibraries),
                 toImmutableList(collections),
                 staticBaseUri,
-                collation
+                collations
             );
         }
     }

@@ -8,13 +8,14 @@ import java.net.URI;
 public class AssertSerializationMatchesImpl implements AssertSerializationMatches {
 
     @Nullable private final URI file;
+    private final String regularExpression;
     @Nullable private final String regularExpressionFlags;
-    @Nullable private final String regularExpression;
 
-    public AssertSerializationMatchesImpl(@Nullable final URI file, @Nullable final String regularExpressionFlags, @Nullable final String regularExpression) {
+
+    public AssertSerializationMatchesImpl(@Nullable final URI file, @Nullable final String regularExpression, @Nullable final String regularExpressionFlags) {
         this.file = file;
-        this.regularExpressionFlags = regularExpressionFlags;
         this.regularExpression = regularExpression;
+        this.regularExpressionFlags = regularExpressionFlags;
     }
 
     @Override
@@ -23,12 +24,12 @@ public class AssertSerializationMatchesImpl implements AssertSerializationMatche
     }
 
     @Override
-    public @Nullable String getRegularExpressionFlags() {
-        return regularExpressionFlags;
+    public @Nullable String getRegularExpression() {
+        return regularExpression;
     }
 
     @Override
-    public @Nullable String getRegularExpression() {
-        return regularExpression;
+    public @Nullable String getRegularExpressionFlags() {
+        return regularExpressionFlags;
     }
 }

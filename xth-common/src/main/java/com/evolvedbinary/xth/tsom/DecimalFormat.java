@@ -5,6 +5,9 @@ import org.jspecify.annotations.Nullable;
 import javax.xml.namespace.QName;
 
 public interface DecimalFormat {
+
+    QName DEFAULT_DECIMAL_FORMAT_NAME = new QName("default");
+
     QName getName();
     @Nullable Character getDecimalSeparator();
     @Nullable Character getGroupingSeparator();

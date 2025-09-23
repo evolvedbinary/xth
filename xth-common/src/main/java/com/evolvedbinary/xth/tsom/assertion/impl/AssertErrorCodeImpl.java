@@ -1,11 +1,11 @@
 package com.evolvedbinary.xth.tsom.assertion.impl;
 
-import com.evolvedbinary.xth.tsom.assertion.AssertError;
+import com.evolvedbinary.xth.tsom.assertion.AssertErrorCode;
 
-public class AssertErrorImpl implements AssertError {
+public class AssertErrorCodeImpl implements AssertErrorCode {
     private final String code;
 
-    public AssertErrorImpl(final String code) {
+    public AssertErrorCodeImpl(final String code) {
         this.code = code;
     }
 

@@ -1,11 +1,14 @@
 package com.evolvedbinary.xth.parser.fots31;
 
+import com.evolvedbinary.xth.parser.api.AbstractTestSuiteParser;
+import com.evolvedbinary.xth.parser.api.ParserEventListener;
 import com.evolvedbinary.xth.parser.api.ParserException;
 import com.evolvedbinary.xth.parser.api.TestSuiteParser;
 import com.evolvedbinary.xth.tsom.ContextItemRole;
 import com.evolvedbinary.xth.tsom.DependencyType;
 import com.evolvedbinary.xth.tsom.ValidationMode;
 import com.evolvedbinary.xth.tsom.XsdVersion;
+import com.evolvedbinary.xth.tsom.assertion.AssertAnyError;
 import com.evolvedbinary.xth.tsom.assertion.AssertEmpty;
 import com.evolvedbinary.xth.tsom.assertion.AssertFalse;
 import com.evolvedbinary.xth.tsom.assertion.AssertTrue;
@@ -30,7 +33,7 @@ import java.util.stream.Collectors;
 
 import static com.evolvedbinary.xth.parser.fots31.JAXBUtil.unmarshal;
 
-public class FOTS31Parser implements TestSuiteParser {
+public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuiteParser {
 
     private final Path testSuiteDirectory;
 
@@ -49,18 +52,21 @@ public class FOTS31Parser implements TestSuiteParser {
         final Path catalogSchemaFile = testSuiteDirectory.resolve(FOTS31Constants.CATALOG_SCHEMA_FILE_NAME);
         final Path catalogFile = testSuiteDirectory.resolve(FOTS31Constants.CATALOG_FILE_NAME);
 
+        emitEvent(ParserEventListener::startParseCatalog);
+
         final Catalog catalog = unmarshal(new Path[] { xmlSchemaFile, catalogSchemaFile}, Catalog.class, catalogFile);
 
-        final List<com.evolvedbinary.xth.tsom.Environment> environments = processEnvironments(catalog.getEnvironment());
-        final List<com.evolvedbinary.xth.tsom.TestSet> testSets = processTestSets(catalog.getTestSet());
+        processEnvironments(catalog.getEnvironment());
+        processTestSets(catalog.getTestSet());
+
+        emitEvent(ParserEventListener::endParseCatalog);
     }
 
-    private List<com.evolvedbinary.xth.tsom.Environment> processEnvironments(final List<Environment> environments) throws ParserException {
-        final List<com.evolvedbinary.xth.tsom.Environment> results = new ArrayList<>(environments.size());
+    private void processEnvironments(final List<Environment> environments) throws ParserException {
         for (final Environment environment : environments) {
-            results.add(toTsom(environment));
+            final com.evolvedbinary.xth.tsom.Environment tsomEnvironment = toTsom(environment);
+            emitEvent(listener -> listener.catalogEnvironment(tsomEnvironment));
         }
-        return results;
     }
 
     private static com.evolvedbinary.xth.tsom.Environment toTsom(final Environment environment) throws ParserException {
@@ -84,7 +90,7 @@ public class FOTS31Parser implements TestSuiteParser {
                 case FunctionLibrary functionLibrary -> builder.addFunctionLibrary(toTsom(functionLibrary));
                 case Collection collection -> builder.addCollection(toTsom(collection));
                 case StaticBaseUri staticBaseUri -> builder.setStaticBaseUri(toTsom(staticBaseUri));
-                case Collation collation -> builder.setCollation(toTsom(collation));
+                case Collation collation -> builder.addCollation(toTsom(collation));
                 default ->
                     throw new ParserException("Unexpected environment object: " + obj.getClass().getName());
             }
@@ -93,12 +99,12 @@ public class FOTS31Parser implements TestSuiteParser {
         return builder.build();
     }
 
-    private List<com.evolvedbinary.xth.tsom.TestSet> processTestSets(final List<Catalog.TestSet> testSets) throws IOException, ParserException {
-        final List<com.evolvedbinary.xth.tsom.TestSet> results = new ArrayList<>(testSets.size());
+    private void processTestSets(final List<Catalog.TestSet> testSets) throws IOException, ParserException {
+        // TODO(AR) load test sets in parallel?
         for (final Catalog.TestSet testSet: testSets) {
-            results.add(processTestSet(testSet));
+            final com.evolvedbinary.xth.tsom.TestSet tsomTestSet = processTestSet(testSet);
+            emitEvent(listener -> listener.testSet(tsomTestSet));
         }
-        return results;
     }
 
     private com.evolvedbinary.xth.tsom.TestSet processTestSet(final Catalog.TestSet catalogTestSet) throws IOException, ParserException {
@@ -520,8 +526,8 @@ public class FOTS31Parser implements TestSuiteParser {
         }
         return new AssertSerializationMatchesImpl(
             toUri(serializationMatches.getFile()),
-            serializationMatches.getFlags(),
-            serializationMatches.getValue()
+            serializationMatches.getValue(),
+            serializationMatches.getFlags()
         );
     }
 
@@ -550,7 +556,12 @@ public class FOTS31Parser implements TestSuiteParser {
         if (error == null) {
             return null;
         }
-        return new AssertErrorImpl(error.getCode());
+
+        if ("*".equals(error.getCode())) {
+            return AssertAnyError.INSTANCE;
+        } else {
+            return new AssertErrorCodeImpl(error.getCode());
+        }
     }
 
     private static com.evolvedbinary.xth.tsom.@Nullable Assertion toTsom(final QName sequenceOfAssertionsTypeName, @Nullable final SequenceOfAssertionsType sequenceOfAssertionsType) throws ParserException {
