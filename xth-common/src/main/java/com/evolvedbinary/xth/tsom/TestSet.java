@@ -2,12 +2,12 @@ package com.evolvedbinary.xth.tsom;
 
 import org.jspecify.annotations.Nullable;
 
-import java.net.URI;
+import java.nio.file.Path;
 import java.util.List;
 
 public interface TestSet {
     String getName();
-    URI getFile();
+    Path getFile();
     List<String> getCovers();
     List<String> getCovers30();
     @Nullable String getDescription();
@@ -16,7 +16,7 @@ public interface TestSet {
     List<Dependency> getDependencies();
 
     interface Builder {
-        void setFile(URI file);
+        void setFile(Path file);
         void setCovers(List<String> covers);
         void setCovers30(List<String> covers30);
         void setDescription(String description);

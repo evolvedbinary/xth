@@ -7,7 +7,12 @@ import com.evolvedbinary.xth.tsom.*;
 import com.evolvedbinary.xth.tsom.assertion.*;
 import com.evolvedbinary.xth.tsom.Collection;
 import com.evolvedbinary.xth.tsom.ValidationMode;
+import com.evolvedbinary.xth.tsom.result.TestCaseResult;
+import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultErrorImpl;
+import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultFailureImpl;
+import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultPassImpl;
 import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
 import net.sf.saxon.Configuration;
 import net.sf.saxon.expr.XPathContext;
 import net.sf.saxon.expr.sort.AtomicSortComparer;
@@ -33,13 +38,17 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.evolvedbinary.xth.util.IOUtil.path;
+import static com.evolvedbinary.xth.util.IOUtil.readFileContent;
+import static com.evolvedbinary.xth.util.ListUtil.safeAdd;
+import static com.evolvedbinary.xth.util.MapUtil.safePut;
+
+@ThreadSafe
 public class SaxonConnector implements Connector {
 
     private static final net.sf.saxon.s9api.QName RESULT_QNAME = new net.sf.saxon.s9api.QName("result");
@@ -64,6 +73,7 @@ public class SaxonConnector implements Connector {
     @GuardedBy("testSetEnvironmentsSetupLocks")
     private final Map<String, Map<String, EnvironmentDefinition>> testSetEnvironments = new ConcurrentHashMap<>();
     private final Map<String, AtomicReference<EnvironmentSetupState>> testSetEnvironmentsSetupLocks = new ConcurrentHashMap<>();
+    private Path baseUri;
 
     @Override
     public String getConnectorName() {
@@ -87,7 +97,8 @@ public class SaxonConnector implements Connector {
     }
 
     @Override
-    public void initialize(final List<EnvironmentDefinition> globalEnvironments) {
+    public void initialize(final Path baseUri, final List<EnvironmentDefinition> globalEnvironments) {
+        this.baseUri = baseUri;
         this.globalEnvironments = new HashMap<>(globalEnvironments.size());
         for (final EnvironmentDefinition globalEnvironment : globalEnvironments) {
             this.globalEnvironments.put(globalEnvironment.getName(), globalEnvironment);
@@ -108,7 +119,7 @@ public class SaxonConnector implements Connector {
     }
 
     @Override
-    public void executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
+    public TestCaseResult executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
         final XQueryCompiler xqueryCompiler = processor.newXQueryCompiler();
 
         final Map<String, EnvironmentDefinition> testSetEnvironments = getTestSetEnvironments(testSet);
@@ -132,10 +143,21 @@ public class SaxonConnector implements Connector {
 
         // Compile the test query
         final XQueryExecutable xqueryExecutable;
+        long testCompilationEndTime;
+        final long testCompilationStartTime = System.currentTimeMillis();
         try {
             xqueryExecutable = xqueryCompiler.compile(xqueryTest);
+            testCompilationEndTime = System.currentTimeMillis();
         } catch (final SaxonApiException e) {
-            throw new ConnectorException(String.format("Error when compiling test case: %s#%s due to: %s", testSet.getName(), testCase.getName(), e.getMessage()), e);
+            testCompilationEndTime = System.currentTimeMillis();
+            if (e.getCause() instanceof XPathException) {
+                // XPathException occurred during compilation, check if it passes the Test Case's assertion
+                final long testCompilationDuration = testCompilationEndTime - testCompilationStartTime;
+                final EvaluationResult evaluationResult = EvaluationResult.failure(e, null);
+                return testAssertion(testCase, evaluationResult, testCompilationDuration);
+            } else {
+                throw new ConnectorException(String.format("Error when compiling test case: %s#%s due to: %s", testSet.getName(), testCase.getName(), e.getMessage()), e);
+            }
         }
 
         // Load the test query and set the Dynamic Context
@@ -149,24 +171,36 @@ public class SaxonConnector implements Connector {
         // Evaluate the test query
         EvaluationResult evaluationResult;
         final FotsErrorReporter errorReporter = new FotsErrorReporter();
+        xqueryEvaluator.setErrorReporter(errorReporter);
+        long testExecutionEndTime;
+        final long testExecutionStartTime = System.currentTimeMillis();
         try {
-            xqueryEvaluator.setErrorReporter(errorReporter);
             final XdmValue result = xqueryEvaluator.evaluate();
+            testExecutionEndTime = System.currentTimeMillis();
             evaluationResult = EvaluationResult.success(result);
         } catch (final SaxonApiException e) {
+            testExecutionEndTime = System.currentTimeMillis();
             evaluationResult = EvaluationResult.failure(e, errorReporter.errors);
         }
 
         // Test the assertion against the result of the query
+        final long testDuration = (testCompilationEndTime - testCompilationStartTime) + (testExecutionEndTime - testExecutionStartTime);
+        return testAssertion(testCase, evaluationResult, testDuration);
+    }
+
+    private TestCaseResult testAssertion(final TestCase testCase, final EvaluationResult evaluationResult, final long testDuration) throws ConnectorException {
         try {
-            final boolean assertionHolds = testAssertion(testCase.getResult(), evaluationResult);
+            final Assertion assertion = testCase.getResult();
+            final boolean assertionHolds = testAssertion(assertion, evaluationResult);
             if (assertionHolds) {
-                // TODO(AR) report Pass
+                return new TestCaseResultPassImpl(testDuration);
             } else {
-                // TODO(AR) report Failure
+                // TODO(AR) add failure information
+                return new TestCaseResultFailureImpl(testDuration);
             }
         } catch (final SaxonApiException e) {
-            // TODO(AR) report Error
+            // TODO(AR) add error information
+            return new TestCaseResultErrorImpl(testDuration);
         }
     }
 
@@ -441,7 +475,7 @@ public class SaxonConnector implements Connector {
         xqueryEvaluator.setURIResolver(new FotsUriResolver(dynamicContextInfo.sourceDocuments));
     }
 
-    private static DynamicContextInfo setupEnvironments(final XQueryCompiler xqueryCompiler, final List<EnvironmentDefinition> testCaseEnvironments) throws SaxonApiException, ConnectorException, XPathException, IOException, URISyntaxException {
+    private DynamicContextInfo setupEnvironments(final XQueryCompiler xqueryCompiler, final List<EnvironmentDefinition> testCaseEnvironments) throws SaxonApiException, ConnectorException, XPathException, IOException, URISyntaxException {
         Map<String, XdmNode> sourceDocuments = null;
         XdmItem contextItem = null;
         Map<net.sf.saxon.s9api.QName, XdmValue> variables = null;
@@ -457,23 +491,31 @@ public class SaxonConnector implements Connector {
         for (final EnvironmentDefinition testCaseEnvironment : testCaseEnvironments) {
 
             // Configure Schemas
-            for (final Schema schema : testCaseEnvironment.getSchemas()) {
-                final Path schemaPath = path(schema.getFile());
-                schemaManager.load(new StreamSource(schemaPath.toFile()));
+            if (schemaManager != null) {
+                for (final Schema schema : testCaseEnvironment.getSchemas()) {
+                    final Path schemaPath = path(testCaseEnvironment.getBaseUri(), schema.getFile());
+                    schemaManager.load(new StreamSource(schemaPath.toFile()));
+                }
+            } else if (!testCaseEnvironments.isEmpty()) {
+                // TODO(AR) warn that we have schemas but there is no schema manager
             }
 
             // Configure Source documents
             for (final Source source : testCaseEnvironment.getSources()) {
-                final Path sourcePath = path(source.getFile());
+                final Path sourcePath = path(testCaseEnvironment.getBaseUri(), source.getFile());
 
                 // set validation of source document
                 if (source.getValidationMode() == ValidationMode.SKIP) {
                      documentBuilder.setSchemaValidator(null);
                 } else {
-                    final SchemaValidator schemaValidator = schemaManager.newSchemaValidator();
-                    schemaValidator.setLax(source.getValidationMode() == ValidationMode.LAX);
-                    documentBuilder.setSchemaValidator(schemaValidator);
-                    xqueryCompiler.setSchemaAware(true);
+                    if (schemaManager != null) {
+                        final SchemaValidator schemaValidator = schemaManager.newSchemaValidator();
+                        schemaValidator.setLax(source.getValidationMode() == ValidationMode.LAX);
+                        documentBuilder.setSchemaValidator(schemaValidator);
+                        xqueryCompiler.setSchemaAware(true);
+                    } else if (!testCaseEnvironments.isEmpty()) {
+                        // TODO(AR) warn that we have schemas but there is no schema manager
+                    }
                 }
 
                 final XdmNode sourceDocument = documentBuilder.build(sourcePath.toFile());
@@ -613,7 +655,7 @@ public class SaxonConnector implements Connector {
             }
 
             for (final FunctionLibrary functionLibrary : testCaseEnvironment.getFunctionLibraries()) {
-                final String functionLibraryContent = readFileContent(path(functionLibrary.getXqueryLocation()));
+                final String functionLibraryContent = readFileContent(path(testCaseEnvironment.getBaseUri(), functionLibrary.getXqueryLocation()));
                 xqueryCompiler.compileLibrary(functionLibraryContent);
             }
 
@@ -629,7 +671,7 @@ public class SaxonConnector implements Connector {
                     // Iterate through the sources in the Collection
                     List<SourceInfo> collectionResources = null;
                     for (final Source source : collection.getSource()) {
-                        collectionResources = safeAdd(collectionResources, new SourceInfo(source.getXmlId(), source.getUri(), path(source.getFile())));
+                        collectionResources = safeAdd(collectionResources, new SourceInfo(source.getXmlId(), source.getUri(), path(testCaseEnvironment.getBaseUri(), source.getFile())));
 //                        XdmNode doc = builder.build(file);
 //                        sourceDocuments.put(id, doc);
                     }
@@ -656,43 +698,11 @@ public class SaxonConnector implements Connector {
         return new DynamicContextInfo(sourceDocuments, contextItem, variables);
     }
 
-    private static <K, V> Map<K, V> safePut(@Nullable Map<K, V> map, final K key, final V value) {
-        if (map == null) {
-            map = new HashMap<>();
-        }
-        map.put(key, value);
-        return map;
-    }
-
-    private static <V> List<V> safeAdd(@Nullable List<V> list, final V value) {
-        if (list == null) {
-            list = new ArrayList<>();
-        }
-        list.add(value);
-        return list;
-    }
-
-    private static Path path(final URI uri) {
-        return Paths.get(uri);
-    }
-
-    private static Path path(final String path) {
-        return Paths.get(path);
-    }
-
     private static String getContent(final Test test) throws IOException {
         if (test.getContent() != null) {
             return test.getContent();
         }
         return readFileContent(test.getFile());
-    }
-
-    private static String readFileContent(final URI fileUri) throws IOException {
-        return readFileContent(Paths.get(fileUri));
-    }
-
-    private static String readFileContent(final Path path) throws IOException {
-        return Files.readString(path);
     }
 
     private Map<String, EnvironmentDefinition> getTestSetEnvironments(final TestSet testSet) throws ConnectorException {

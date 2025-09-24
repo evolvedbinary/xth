@@ -3,17 +3,29 @@ package com.evolvedbinary.xth.parser.fots31;
 import com.evolvedbinary.xth.parser.api.AbstractTestSuiteParser;
 import com.evolvedbinary.xth.parser.api.ParserException;
 import com.evolvedbinary.xth.parser.api.TestSuiteParser;
-import com.evolvedbinary.xth.tsom.ContextItemRole;
-import com.evolvedbinary.xth.tsom.DependencyType;
-import com.evolvedbinary.xth.tsom.ValidationMode;
-import com.evolvedbinary.xth.tsom.XsdVersion;
+import com.evolvedbinary.xth.tsom.*;
 import com.evolvedbinary.xth.tsom.assertion.impl.*;
 import com.evolvedbinary.xth.tsom.impl.*;
 import jakarta.xml.bind.JAXBElement;
 import org.jspecify.annotations.Nullable;
 import org.w3._2010._09.qt_fots_catalog.*;
+import org.w3._2010._09.qt_fots_catalog.Collation;
+import org.w3._2010._09.qt_fots_catalog.Collection;
+import org.w3._2010._09.qt_fots_catalog.ContextItem;
+import org.w3._2010._09.qt_fots_catalog.Created;
+import org.w3._2010._09.qt_fots_catalog.DecimalFormat;
+import org.w3._2010._09.qt_fots_catalog.Dependency;
+import org.w3._2010._09.qt_fots_catalog.Environment;
 import org.w3._2010._09.qt_fots_catalog.Error;
+import org.w3._2010._09.qt_fots_catalog.FunctionLibrary;
+import org.w3._2010._09.qt_fots_catalog.Link;
+import org.w3._2010._09.qt_fots_catalog.Modified;
 import org.w3._2010._09.qt_fots_catalog.Module;
+import org.w3._2010._09.qt_fots_catalog.Namespace;
+import org.w3._2010._09.qt_fots_catalog.StaticBaseUri;
+import org.w3._2010._09.qt_fots_catalog.Test;
+import org.w3._2010._09.qt_fots_catalog.TestCase;
+import org.w3._2010._09.qt_fots_catalog.TestSet;
 import org.w3c.dom.Element;
 
 import javax.xml.namespace.QName;
@@ -28,6 +40,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.evolvedbinary.xth.parser.fots31.JAXBUtil.unmarshal;
+import static com.evolvedbinary.xth.util.IOUtil.path;
 
 public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuiteParser {
 
@@ -56,7 +69,7 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
 
         // Process Catalog Environment(s)
         emitEvent(listener -> listener.startParseCatalogEnvironments(parseId));
-        processEnvironments(parseId, catalog.getEnvironment());
+        processGlobalEnvironments(parseId, catalogFile, catalog.getEnvironment());
         emitEvent(listener -> listener.endParseCatalogEnvironments(parseId));
 
         // Process Catalog TestSet(s)
@@ -68,22 +81,26 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
         emitEvent(listener -> listener.endParseCatalog(parseId));
     }
 
-    private void processEnvironments(final UUID parseId, final List<Environment> environments) throws ParserException {
+    private void processGlobalEnvironments(final UUID parseId, final Path catalogFile, final List<Environment> environments) throws ParserException {
         for (final Environment environment : environments) {
-            final com.evolvedbinary.xth.tsom.Environment tsomEnvironment = toTsom(environment);
-            emitEvent(listener -> listener.catalogEnvironment(parseId, tsomEnvironment));
+            final com.evolvedbinary.xth.tsom.Environment tsomEnvironment = toTsom(catalogFile.toUri(), environment);
+            if (tsomEnvironment instanceof final EnvironmentDefinition tsomEnvironmentDefinition) {
+                emitEvent(listener -> listener.catalogEnvironment(parseId, tsomEnvironmentDefinition));
+            } else {
+                throw new ParserException("Unexpected environment reference at catalog level");
+            }
         }
     }
 
-    private static com.evolvedbinary.xth.tsom.Environment toTsom(final Environment environment) throws ParserException {
+    private static com.evolvedbinary.xth.tsom.Environment toTsom(final URI environmentBaseUri, final Environment environment) throws ParserException {
         final String reference = environment.getRef();
         if (reference != null) {
-            return EnvironmentReferenceImpl.builder(reference)
+            return EnvironmentReferenceImpl.builder(environmentBaseUri, reference)
                 .build();
         }
 
         final String name = environment.getName();
-        final com.evolvedbinary.xth.tsom.EnvironmentDefinition.Builder builder = EnvironmentDefinitionImpl.builder(name);
+        final com.evolvedbinary.xth.tsom.EnvironmentDefinition.Builder builder = EnvironmentDefinitionImpl.builder(environmentBaseUri, name);
         for (final Object obj : environment.getSchemaOrSourceOrResource()) {
             switch (obj) {
                 case SchemaType schema -> builder.addSchema(toTsom(schema));
@@ -114,33 +131,34 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
 
     private void processTestSet(final UUID parseId, final Catalog.TestSet catalogTestSet) throws IOException, ParserException {
         final UUID testSetId = generateUniqueId();
-        final TestSet testSet = unmarshalTestSetFile(catalogTestSet.getFile());
-        final com.evolvedbinary.xth.tsom.TestSet tsomTestSet = toTsom(catalogTestSet.getName(), catalogTestSet.getFile(), testSet);
+        final Path testSuiteFile = testSuiteDirectory.resolve(catalogTestSet.getFile());
+        final TestSet testSet = unmarshalTestSetFile(testSuiteFile);
+        final com.evolvedbinary.xth.tsom.TestSet tsomTestSet = toTsom(catalogTestSet.getName(), testSuiteFile, testSet);
 
         emitEvent(listener -> listener.startParseTestSet(parseId, testSetId, tsomTestSet));
         // TODO(AR) process test cases in parallel?
         for (final TestCase testCase : testSet.getTestCase()) {
-            processTestCase(parseId, testSetId, testCase);
+            processTestCase(parseId, testSetId, testSuiteFile.toUri(), testCase);
         }
         emitEvent(listener -> listener.endParseTestSet(parseId, testSetId));
     }
 
-    private void processTestCase(final UUID parseId, final UUID testSetId, final TestCase testCase) throws ParserException {
+    private void processTestCase(final UUID parseId, final UUID testSetId, final URI testCaseBaseUri, final TestCase testCase) throws ParserException {
         final UUID testCaseId = generateUniqueId();
-        final com.evolvedbinary.xth.tsom.TestCase tsomTestCase = toTsom(testCase);
+        final com.evolvedbinary.xth.tsom.TestCase tsomTestCase = toTsom(testCaseBaseUri, testCase);
         emitEvent(listener -> listener.testCase(parseId, testSetId, testCaseId, tsomTestCase));
     }
 
-    private static com.evolvedbinary.xth.tsom.TestSet toTsom(final String name, final String file, final TestSet testSet) throws ParserException {
+    private static com.evolvedbinary.xth.tsom.TestSet toTsom(final String name, final Path file, final TestSet testSet) throws ParserException {
         final com.evolvedbinary.xth.tsom.TestSet.Builder builder = TestSetImpl.builder(name);
-        builder.setFile(toUri(file));
+        builder.setFile(file);
         builder.setCovers(testSet.getCovers());
         builder.setCovers30(testSet.getCovers30());
         for (final Object obj : testSet.getDescriptionOrLinkOrEnvironment()) {
             switch (obj) {
                 case Description description -> builder.setDescription(description.getValue());
                 case Link link -> builder.addLink(toTsom(link));
-                case Environment environment -> builder.addEnvironment(toTsom(environment));
+                case Environment environment -> builder.addEnvironment(toTsom(file.toUri(), environment));
                 case Dependency dependency -> builder.addDependency(toTsom(dependency));
                 default -> throw new ParserException("Unexpected test-set object: " + obj.getClass().getName());
 
@@ -149,11 +167,9 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
         return builder.build();
     }
 
-    private TestSet unmarshalTestSetFile(final String filePath) throws IOException {
+    private TestSet unmarshalTestSetFile(final Path testSuiteFile) throws IOException {
         final Path xmlSchemaFile = testSuiteDirectory.resolve(FOTS31Constants.XML_SCHEMA_FILE_NAME);
         final Path catalogSchemaFile = testSuiteDirectory.resolve(FOTS31Constants.CATALOG_SCHEMA_FILE_NAME);
-        final Path testSuiteFile = testSuiteDirectory.resolve(filePath);
-
         return unmarshal(new Path[] { xmlSchemaFile, catalogSchemaFile}, TestSet.class, testSuiteFile);
     }
 
@@ -399,7 +415,7 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
         );
     }
 
-    private static com.evolvedbinary.xth.tsom.@Nullable TestCase toTsom(@Nullable final TestCase testCase) throws ParserException {
+    private static com.evolvedbinary.xth.tsom.@Nullable TestCase toTsom(final URI testCaseBaseUri, @Nullable final TestCase testCase) throws ParserException {
         if (testCase == null) {
             return null;
         }
@@ -414,7 +430,7 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
         }
         for (final Object obj : testCase.getEnvironmentOrModuleOrDependency()) {
             switch (obj) {
-                case Environment environment -> builder.addEnvironment(toTsom(environment));
+                case Environment environment -> builder.addEnvironment(toTsom(testCaseBaseUri, environment));
                 case Module module -> builder.addModule(toTsom(module));
                 case Dependency dependency -> builder.addDependency(toTsom(dependency));
                 default -> throw new ParserException("Unexpected test-case object: " + obj.getClass().getName());

@@ -3,7 +3,7 @@ package com.evolvedbinary.xth.tsom.impl;
 import com.evolvedbinary.xth.tsom.*;
 import org.jspecify.annotations.Nullable;
 
-import java.net.URI;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,7 +11,7 @@ import static com.evolvedbinary.xth.util.ListUtil.toImmutableList;
 
 public class TestSetImpl extends AbstractBase implements TestSet {
     private final String name;
-    private final URI file;
+    private final Path file;
     private final List<String> covers;
     private final List<String> covers30;
     @Nullable private final String description;
@@ -19,7 +19,7 @@ public class TestSetImpl extends AbstractBase implements TestSet {
     private final List<Environment> environments;
     private final List<Dependency> dependencies;
 
-    public TestSetImpl(final String xmlId, final String name, final URI file, final List<String> covers,
+    public TestSetImpl(final String xmlId, final String name, final Path file, final List<String> covers,
             final List<String> covers30, @Nullable final String description, final List<Link> links,
             final List<Environment> environments, final List<Dependency> dependencies) {
         super(xmlId);
@@ -39,7 +39,7 @@ public class TestSetImpl extends AbstractBase implements TestSet {
     }
 
     @Override
-    public URI getFile() {
+    public Path getFile() {
         return file;
     }
 
@@ -79,7 +79,7 @@ public class TestSetImpl extends AbstractBase implements TestSet {
 
     public static class Builder extends AbstractBase.Builder implements TestSet.Builder {
         private final String name;
-        private URI file = null;
+        private Path file = null;
         private List<String> covers = null;
         private List<String> covers30 = null;
         @Nullable private String description = null;
@@ -92,7 +92,7 @@ public class TestSetImpl extends AbstractBase implements TestSet {
         }
 
         @Override
-        public void setFile(final URI file) {
+        public void setFile(final Path file) {
             this.file = file;
         }
 

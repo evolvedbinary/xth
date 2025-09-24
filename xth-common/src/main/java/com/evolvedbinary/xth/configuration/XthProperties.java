@@ -81,7 +81,7 @@ public class XthProperties {
                 throw new IOException("Unable to acquire read lock");
             }
         } catch (final InterruptedException e) {
-            // restore interrupt flag
+            // restore thread's interrupted flag
             Thread.currentThread().interrupt();
             throw new IOException(e.getMessage(), e);
         }

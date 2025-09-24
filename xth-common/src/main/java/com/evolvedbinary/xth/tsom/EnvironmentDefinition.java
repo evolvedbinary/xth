@@ -1,10 +1,11 @@
 package com.evolvedbinary.xth.tsom;
 
+import com.evolvedbinary.xth.tsom.impl.EnvironmentDefinitionImpl;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
-public interface EnvironmentDefinition extends Environment {
+public sealed interface EnvironmentDefinition extends Environment permits EnvironmentDefinitionImpl {
 
     /**
      * Get Schemas.
@@ -84,7 +85,7 @@ public interface EnvironmentDefinition extends Environment {
      */
     List<Collation> getCollations();
 
-    interface Builder extends Environment.Builder {
+    sealed interface Builder extends Environment.Builder permits EnvironmentDefinitionImpl.Builder {
         Builder addSchema(Schema schema);
         Builder addSource(Source source);
         Builder addResource(Resource resource);

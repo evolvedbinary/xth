@@ -18,7 +18,8 @@ public enum ArgumentDefinition {
     GIT_BRANCH(     "git-branch",   "b", "test_repo_branch",    "\t",       "The Git branch of the Git Repository to run. (default: %s)", descriptionParams(XthProperties::getDefaultQtGitBranch), setStringArgument(Arguments::setQtGitBranch)),
 
     CACHE_DIR(      "cache-dir",    "c", "path_to_cache_dir",   "\t",       "The directory to cache downloaded test suites in. (default: %s)", descriptionParams(XthProperties::getDefaultCacheDirectory), setPathArgument(Arguments::setCacheDirectory)),
-    OUTPUT_DIR(     "output-dir",   "o", "path_to_output_dir",  "\t",       "The directory to write the output and results to. (default: %s)", descriptionParams(XthProperties::getDefaultOutputDirectory), setPathArgument(Arguments::setOutputDirectory));
+    OUTPUT_DIR(     "output-dir",   "o", "path_to_output_dir",  "\t",       "The directory to write the output and results to. (default: %s)", descriptionParams(XthProperties::getDefaultOutputDirectory), setPathArgument(Arguments::setOutputDirectory)),
+    VERBOSE(       "verbose",      "V", "verbose",             "\t\t\t",   "Produce verbose output on Stdout", null, setBooleanArgument(Arguments::setVerbose));
 
     public final String fullArg;
     public final String shortArg;
@@ -96,6 +97,14 @@ public enum ArgumentDefinition {
         return (arguments, parameter) -> {
             final URI uri = URI.create(parameter);
             setter.accept(arguments, uri);
+            return arguments;
+        };
+    }
+
+    private static BiFunction<Arguments, String, Arguments> setBooleanArgument(final BiConsumer<Arguments, Boolean> setter) {
+        return (arguments, parameter) -> {
+            final Boolean bool = Boolean.parseBoolean(parameter);
+            setter.accept(arguments, bool);
             return arguments;
         };
     }

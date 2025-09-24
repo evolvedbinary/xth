@@ -10,5 +10,6 @@ public record Configuration(
     URI gitRepoUri,
     String gitBranch,
     Path cacheDirectory,
-    Path outputDir
+    Path outputDir,
+    boolean verbose
 ) { }

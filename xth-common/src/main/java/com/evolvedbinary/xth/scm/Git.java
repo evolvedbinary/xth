@@ -53,7 +53,7 @@ public class Git {
                 throw new IOException("Executing `git status` (in: " + repoDir + ") did not complete within 5 seconds");
             }
         } catch (final InterruptedException e) {
-            // restore interrupt flag
+            // restore thread's interrupted flag
             Thread.currentThread().interrupt();
             throw new IOException(e.getMessage(), e);
         }
@@ -142,7 +142,7 @@ public class Git {
                 throw new IOException("Executing `git clone` (into: " + repoDir + ") did not complete within 15 minutes");
             }
         } catch (final InterruptedException e) {
-            // restore interrupt flag
+            // restore thread's interrupted flag
             Thread.currentThread().interrupt();
             throw new IOException(e.getMessage(), e);
         }
@@ -168,7 +168,7 @@ public class Git {
                 throw new IOException("Executing `git fetch` (in: " + repoDir + ") did not complete within 15 minutes");
             }
         } catch (final InterruptedException e) {
-            // restore interrupt flag
+            // restore thread's interrupted flag
             Thread.currentThread().interrupt();
             throw new IOException(e.getMessage(), e);
         }
@@ -207,7 +207,7 @@ public class Git {
             }
 
         } catch (final InterruptedException e) {
-            // restore interrupt flag
+            // restore thread's interrupted flag
             Thread.currentThread().interrupt();
             throw new IOException(e.getMessage(), e);
         }

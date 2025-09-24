@@ -5,4 +5,5 @@ module xth.cli {
     requires xth.parser.api;
     requires xth.parser.util;
     requires static org.jspecify;
+    requires static jcip.annotations;
 }

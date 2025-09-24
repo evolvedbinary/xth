@@ -5,7 +5,9 @@ import com.evolvedbinary.xth.connector.api.ConnectorException;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
 import com.evolvedbinary.xth.tsom.TestCase;
 import com.evolvedbinary.xth.tsom.TestSet;
+import com.evolvedbinary.xth.tsom.result.TestCaseResult;
 
+import java.nio.file.Path;
 import java.util.List;
 
 public class ElementalServerConnector implements Connector {
@@ -25,12 +27,12 @@ public class ElementalServerConnector implements Connector {
     }
 
     @Override
-    public void initialize(final List<EnvironmentDefinition> globalEnvironments) throws ConnectorException {
+    public void initialize(final Path baseUri, final List<EnvironmentDefinition> globalEnvironments) throws ConnectorException {
         throw new UnsupportedOperationException("TODO(AR) implement");
     }
 
     @Override
-    public void executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
+    public TestCaseResult executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
         throw new UnsupportedOperationException("TODO(AR) implement");
     }
 }

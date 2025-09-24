@@ -19,6 +19,7 @@ public class Arguments {
     @Nullable private String qtGitBranch;
     @Nullable private Path cacheDirectory;
     @Nullable private Path outputDirectory;
+    private boolean verbose;
 
 //    @Nullable String testSetPattern,
 //    @Nullable List<String> testSets,
@@ -74,5 +75,13 @@ public class Arguments {
 
     public void setOutputDirectory(@Nullable final Path outputDirectory) {
         this.outputDirectory = outputDirectory;
+    }
+
+    public boolean isVerbose() {
+        return verbose;
+    }
+
+    public void setVerbose(final boolean verbose) {
+        this.verbose = verbose;
     }
 }

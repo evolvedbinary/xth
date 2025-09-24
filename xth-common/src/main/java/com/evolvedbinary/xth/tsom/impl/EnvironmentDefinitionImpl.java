@@ -3,12 +3,13 @@ package com.evolvedbinary.xth.tsom.impl;
 import com.evolvedbinary.xth.tsom.*;
 import org.jspecify.annotations.Nullable;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.evolvedbinary.xth.util.ListUtil.toImmutableList;
 
-public class EnvironmentDefinitionImpl extends AbstractEnvironment implements EnvironmentDefinition {
+public final class EnvironmentDefinitionImpl extends AbstractEnvironment implements EnvironmentDefinition {
 
     private final List<Schema> schemas;
     private final List<Source> sources;
@@ -22,12 +23,12 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
     private final @Nullable StaticBaseUri staticBaseUri;
     private final List<Collation> collations;
 
-    private EnvironmentDefinitionImpl(@Nullable final String name, final List<Schema> schemas, final List<Source> sources,
+    private EnvironmentDefinitionImpl(final URI baseUri, @Nullable final String name, final List<Schema> schemas, final List<Source> sources,
             final List<Resource> resources, final List<Parameter> parameters, final @Nullable ContextItem contextItem,
             final List<DecimalFormat> decimalFormats, final List<Namespace> namespaces,
             final List<FunctionLibrary> functionLibraries, final List<Collection> collections,
             final @Nullable StaticBaseUri staticBaseUri, final List<Collation> collations) {
-        super(name);
+        super(baseUri, name);
         this.schemas = schemas;
         this.sources = sources;
         this.resources = resources;
@@ -96,11 +97,11 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
         return collations;
     }
 
-    public static Builder builder(final String name) {
-        return new Builder(name);
+    public static Builder builder(final URI baseUri, @Nullable final String name) {
+        return new Builder(baseUri, name);
     }
 
-    public static class Builder extends AbstractEnvironment.Builder implements EnvironmentDefinition.Builder {
+    public static final class Builder extends AbstractEnvironment.Builder implements EnvironmentDefinition.Builder {
         protected List<Schema> schemas = null;
         protected List<Source> sources = null;
         protected List<Resource> resources = null;
@@ -113,8 +114,8 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
         protected @Nullable StaticBaseUri staticBaseUri = null;
         protected List<Collation> collations = null;
 
-        private Builder(@Nullable final String name) {
-            super(name);
+        private Builder(final URI baseUri, @Nullable final String name) {
+            super(baseUri, name);
         }
 
         @Override
@@ -213,6 +214,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
         @Override
         public Environment build() {
             return new EnvironmentDefinitionImpl(
+                baseUri,
                 name,
                 toImmutableList(schemas),
                 toImmutableList(sources),
@@ -224,7 +226,7 @@ public class EnvironmentDefinitionImpl extends AbstractEnvironment implements En
                 toImmutableList(functionLibraries),
                 toImmutableList(collections),
                 staticBaseUri,
-                collations
+                toImmutableList(collations)
             );
         }
     }

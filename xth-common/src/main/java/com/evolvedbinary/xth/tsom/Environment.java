@@ -1,8 +1,16 @@
 package com.evolvedbinary.xth.tsom;
 
+import com.evolvedbinary.xth.tsom.impl.AbstractEnvironment;
 import org.jspecify.annotations.Nullable;
 
-public interface Environment {
+import java.net.URI;
+
+public sealed interface Environment permits EnvironmentReference, EnvironmentDefinition, AbstractEnvironment {
+
+    /**
+     * Get the BaseURI of the environment.
+     */
+    URI getBaseUri();
 
     /**
      * Get the name of the Environment.
@@ -11,7 +19,7 @@ public interface Environment {
      */
     @Nullable String getName();
 
-    interface Builder {
+    sealed interface Builder permits EnvironmentReference.Builder, EnvironmentDefinition.Builder, AbstractEnvironment.Builder {
         Environment build();
     }
 }

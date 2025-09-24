@@ -1,6 +1,6 @@
 package com.evolvedbinary.xth.parser.api;
 
-import com.evolvedbinary.xth.tsom.Environment;
+import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
 import com.evolvedbinary.xth.tsom.TestCase;
 import com.evolvedbinary.xth.tsom.TestSet;
 
@@ -11,7 +11,7 @@ public interface ParserEventListener {
     void startParseCatalog(UUID parseId, Path catalogFile);
 
     void startParseCatalogEnvironments(UUID parseId);
-    void catalogEnvironment(UUID parseId, Environment environment);
+    void catalogEnvironment(UUID parseId, EnvironmentDefinition environment);
     void endParseCatalogEnvironments(UUID parseId);
 
     void startParseTestSets(UUID parseId);

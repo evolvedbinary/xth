@@ -3,6 +3,7 @@ package com.evolvedbinary.xth.cli;
 import com.evolvedbinary.xth.configuration.Configuration;
 import com.evolvedbinary.xth.configuration.XthProperties;
 import com.evolvedbinary.xth.connector.api.Connector;
+import com.evolvedbinary.xth.connector.api.ConnectorException;
 import com.evolvedbinary.xth.connector.util.ConnectorFactory;
 import com.evolvedbinary.xth.parser.api.ParserEventListener;
 import com.evolvedbinary.xth.parser.api.ParserException;
@@ -17,9 +18,11 @@ import org.jspecify.annotations.Nullable;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Path;
-import java.util.EventListener;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * Command Line Interface for X Test Harness.
@@ -33,10 +36,12 @@ public class CliMain {
     private final static int EXIT_CODE_UNABLE_TO_LOAD_PROPERTIES = 1;
     private final static int EXIT_CODE_INVALID_ARGUMENTS = 2;
     private final static int EXIT_CODE_NO_CONNECTORS = 3;
-    private final static int EXIT_CODE_GIT_REPO_ERROR = 4;
-    private final static int EXIT_CODE_PARSER_PROVIDER_IO_ERROR = 5;
-    private final static int EXIT_CODE_NO_SUITABLE_PARSER_AVAILABLE = 6;
-    private final static int EXIT_CODE_PARSE_ERROR = 7;
+    private final static int EXIT_CODE_CONNECTOR_ERROR = 4;
+    private final static int EXIT_CODE_GIT_REPO_ERROR = 5;
+    private final static int EXIT_CODE_PARSER_PROVIDER_IO_ERROR = 6;
+    private final static int EXIT_CODE_NO_SUITABLE_PARSER_AVAILABLE = 7;
+    private final static int EXIT_CODE_PARSE_ERROR = 8;
+    private final static int EXIT_CODE_PROCESS_INTERRUPTED = 9;
 
 
     public static void main(final String[] args) {
@@ -87,7 +92,6 @@ public class CliMain {
             return;
         }
 
-        // TODO(AR) allow multiple test sets to be run?
         // TODO(AR) auto-detect what sort of test suite it is
         @Nullable final TestSuiteParser testSuiteParser;
         try {
@@ -104,68 +108,37 @@ public class CliMain {
         stdOut.println("Detected Test Suite in: " + gitRepoPath);
         stdOut.println("Using parser: " + testSuiteParser.getParserName());
 
-        testSuiteParser.addEventListener(new ParserEventListener() {
-
-            @Override
-            public void startParseCatalog(final UUID parseId, final Path catalogFile) {
-                stdOut.println(String.format("Starting to parse Catalog (%s): %s", parseId, catalogFile));
-            }
-
-            @Override
-            public void startParseCatalogEnvironments(final UUID parseId) {
-                stdOut.println(String.format("* Starting to parse Global Environments (%s)...", parseId));
-            }
-
-            @Override
-            public void catalogEnvironment(final UUID parseId, final Environment environment) {
-                stdOut.println(String.format("\tGlobal Environment (%s): %s", parseId, environment.getName()));
-            }
-
-            @Override
-            public void endParseCatalogEnvironments(final UUID parseId) {
-                stdOut.println(String.format("* Finished parsing Global Environments (%s).", parseId));
-            }
-
-            @Override
-            public void startParseTestSets(final UUID parseId) {
-                stdOut.println(String.format("* Starting to parse TestSets (%s)...", parseId));
-            }
-
-            @Override
-            public void startParseTestSet(final UUID parseId, final UUID testSetId, final TestSet testSet) {
-                stdOut.println(String.format("\tStarting to parse Test Set (%s / %s): %s", parseId, testSetId, testSet.getName()));
-            }
-
-            @Override
-            public void testCase(final UUID parseId, final UUID testSetId, final UUID testCaseId, final TestCase testCase) {
-                stdOut.println(String.format("\t\tTest Case (%s / %s / %s): %s", parseId, testSetId, testCaseId, testCase.getName()));
-            }
-
-            @Override
-            public void endParseTestSet(final UUID parseId, final UUID testSetId) {
-                stdOut.println(String.format("\tFinished parsing Test Set (%s / %s).", parseId, testSetId));
-            }
-
-            @Override
-            public void endParseTestSets(final UUID parseId) {
-                stdOut.println(String.format("* Finished parsing TestSets (%s).", parseId));
-            }
-
-            @Override
-            public void endParseCatalog(final UUID parseId) {
-                stdOut.println(String.format("Finished parsing Catalog (%s).", parseId));
-            }
-        });
-
-
-
-        // TODO(AR) parse the test suite with the appropriate parser - maybe this should generate a number of tasks in a queue?
-        try {
-            testSuiteParser.parse();
-        } catch (final IOException | ParserException e) {
-            exit(EXIT_CODE_PARSE_ERROR, e, stdErr);
-            return;
+        if (configuration.verbose()) {
+            testSuiteParser.addEventListener(new ParserEventListenerPrintStream(stdOut));
         }
+
+        // Execute the test suite
+        final ThreadFactory testSuiteThreadFactory = Thread.ofVirtual().name("test-suite-", 0).factory();
+        try (final StructuredTaskScope<Object, Void> testSuiteScope = StructuredTaskScope.open(StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow(), config -> config.withThreadFactory(testSuiteThreadFactory))) {
+            // TODO(AR) do stuff
+            final Connector connector = connectors.get(0); // TODO(AR) allow for multiple connectors
+            final List<TestResultsListener> testResultsListeners = List.of(new TestResultsListenerPrintStream(stdOut));
+            final StructuredTaskScope.Subtask<Object> parse = testSuiteScope.fork(new ExecuteTestSuiteTask(connector, testSuiteParser, testResultsListeners));
+
+            try {
+                testSuiteScope.join();
+            } catch (final StructuredTaskScope.FailedException e) {
+                if (e.getCause() instanceof ExecuteTestSuiteTask.ExecuteTestSuiteTaskException ee) {
+                    exit(EXIT_CODE_PARSE_ERROR, ee, stdErr);
+                    return;
+                } else if (e.getCause() instanceof ConnectorException ee) {
+                    exit(EXIT_CODE_CONNECTOR_ERROR, ee, stdErr);
+                    return;
+                }
+                throw e;
+            }
+        } catch (final InterruptedException e) {
+            // restore thread's interrupted flag
+            Thread.currentThread().interrupt();
+            exit(EXIT_CODE_PROCESS_INTERRUPTED, e, stdErr);
+        }
+
+        // TODO(AR) shutdown the Connectors when we are finished with them
 
         // TODO(AR) select one or more Processors (e.g. Elemental, eXist-db, Saxon, BaseX)
 
@@ -245,7 +218,8 @@ public class CliMain {
             valueOrDefault(arguments.getQtGitRepoUri(), xthProperties.getDefaultQtGitRepoUri()),
             valueOrDefault(arguments.getQtGitBranch(), xthProperties.getDefaultQtGitBranch()),
             valueOrDefault(arguments.getCacheDirectory(), xthProperties.getDefaultCacheDirectory()),
-            valueOrDefault(arguments.getOutputDirectory(), xthProperties.getDefaultOutputDirectory())
+            valueOrDefault(arguments.getOutputDirectory(), xthProperties.getDefaultOutputDirectory()),
+            arguments.isVerbose()
         );
     }
 
