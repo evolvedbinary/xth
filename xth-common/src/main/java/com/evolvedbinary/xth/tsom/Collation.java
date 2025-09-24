@@ -1,8 +1,10 @@
 package com.evolvedbinary.xth.tsom;
 
+import com.evolvedbinary.xth.tsom.impl.CollationImpl;
+
 import java.net.URI;
 
-public interface Collation {
+public sealed interface Collation permits CollationImpl {
 
     /**
      * Get the URI of the Collation.

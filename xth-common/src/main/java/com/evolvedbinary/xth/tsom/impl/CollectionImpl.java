@@ -7,7 +7,7 @@ import com.evolvedbinary.xth.tsom.Source;
 import java.net.URI;
 import java.util.List;
 
-public class CollectionImpl implements Collection {
+public final class CollectionImpl implements Collection {
     private final URI uri;
     private final List<Source> source;
     private final List<Resource> resource;

@@ -1,10 +1,11 @@
 package com.evolvedbinary.xth.tsom;
 
+import com.evolvedbinary.xth.tsom.impl.TestCaseImpl;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
-public interface TestCase {
+public sealed interface TestCase permits TestCaseImpl {
     String getName();
     List<String> getCovers();
     List<String> getCovers30();

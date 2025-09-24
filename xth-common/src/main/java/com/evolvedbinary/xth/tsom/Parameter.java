@@ -1,10 +1,11 @@
 package com.evolvedbinary.xth.tsom;
 
+import com.evolvedbinary.xth.tsom.impl.ParameterImpl;
 import org.jspecify.annotations.Nullable;
 
 import javax.xml.namespace.QName;
 
-public interface Parameter {
+public sealed interface Parameter permits ParameterImpl {
     QName getName();
     @Nullable String getSelect();
     @Nullable String getAs();

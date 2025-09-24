@@ -3,7 +3,7 @@ package com.evolvedbinary.xth.tsom.impl;
 import com.evolvedbinary.xth.tsom.FunctionLibrary;
 import org.jspecify.annotations.Nullable;
 
-public class FunctionLibraryImpl implements FunctionLibrary {
+public final class FunctionLibraryImpl implements FunctionLibrary {
     private final String name;
     @Nullable private final String xsltLocation;
     @Nullable private final String xqueryLocation;

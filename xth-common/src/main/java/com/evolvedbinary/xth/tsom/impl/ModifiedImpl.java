@@ -5,7 +5,7 @@ import com.evolvedbinary.xth.tsom.Modified;
 import javax.xml.datatype.XMLGregorianCalendar;
 import java.time.Instant;
 
-public class ModifiedImpl implements Modified {
+public final class ModifiedImpl implements Modified {
     private final String by;
     private final XMLGregorianCalendar on;
     private final String change;

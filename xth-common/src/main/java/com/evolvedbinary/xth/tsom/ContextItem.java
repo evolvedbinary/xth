@@ -1,6 +1,8 @@
 package com.evolvedbinary.xth.tsom;
 
-public interface ContextItem {
+import com.evolvedbinary.xth.tsom.impl.ContextItemImpl;
+
+public sealed interface ContextItem permits ContextItemImpl {
 
     /**
      * Get the Select XPath expression to evaluate for the Context Item.

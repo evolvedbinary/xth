@@ -5,7 +5,7 @@ import org.jspecify.annotations.Nullable;
 
 import javax.xml.namespace.QName;
 
-public class ParameterImpl implements Parameter {
+public final class ParameterImpl implements Parameter {
     private final QName name;
     @Nullable private final String select;
     @Nullable private final String as;

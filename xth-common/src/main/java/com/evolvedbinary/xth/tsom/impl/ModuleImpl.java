@@ -5,7 +5,7 @@ import com.evolvedbinary.xth.tsom.Module;
 
 import java.net.URI;
 
-public class ModuleImpl implements Module {
+public final class ModuleImpl implements Module {
     private final String uri;
     @Nullable private final URI location;
     private final URI file;

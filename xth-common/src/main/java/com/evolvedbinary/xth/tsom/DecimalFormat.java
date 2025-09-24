@@ -1,10 +1,11 @@
 package com.evolvedbinary.xth.tsom;
 
+import com.evolvedbinary.xth.tsom.impl.DecimalFormatImpl;
 import org.jspecify.annotations.Nullable;
 
 import javax.xml.namespace.QName;
 
-public interface DecimalFormat {
+public sealed interface DecimalFormat permits DecimalFormatImpl {
 
     QName DEFAULT_DECIMAL_FORMAT_NAME = new QName("default");
 

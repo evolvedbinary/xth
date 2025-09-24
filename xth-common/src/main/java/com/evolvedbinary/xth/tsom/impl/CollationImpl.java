@@ -4,7 +4,7 @@ import com.evolvedbinary.xth.tsom.Collation;
 
 import java.net.URI;
 
-public class CollationImpl implements Collation {
+public final class CollationImpl implements Collation {
 
     private final URI uri;
     private final boolean def;

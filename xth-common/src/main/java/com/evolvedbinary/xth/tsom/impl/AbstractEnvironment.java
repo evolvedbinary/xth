@@ -1,6 +1,6 @@
 package com.evolvedbinary.xth.tsom.impl;
 
-import com.evolvedbinary.xth.tsom.*;
+import com.evolvedbinary.xth.tsom.Environment;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;

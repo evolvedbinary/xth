@@ -1,6 +1,18 @@
 package com.evolvedbinary.xth.tsom.impl;
 
-import com.evolvedbinary.xth.tsom.*;
+import com.evolvedbinary.xth.tsom.Collation;
+import com.evolvedbinary.xth.tsom.Collection;
+import com.evolvedbinary.xth.tsom.ContextItem;
+import com.evolvedbinary.xth.tsom.DecimalFormat;
+import com.evolvedbinary.xth.tsom.Environment;
+import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
+import com.evolvedbinary.xth.tsom.FunctionLibrary;
+import com.evolvedbinary.xth.tsom.Namespace;
+import com.evolvedbinary.xth.tsom.Parameter;
+import com.evolvedbinary.xth.tsom.Resource;
+import com.evolvedbinary.xth.tsom.Schema;
+import com.evolvedbinary.xth.tsom.Source;
+import com.evolvedbinary.xth.tsom.StaticBaseUri;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;

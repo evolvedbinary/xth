@@ -1,4 +1,4 @@
 package com.evolvedbinary.xth.tsom;
 
-public interface Role {
+public sealed interface Role permits ContextItemRole, VariableRole {
 }

@@ -1,11 +1,12 @@
 package com.evolvedbinary.xth.tsom;
 
+import com.evolvedbinary.xth.tsom.impl.TestSetImpl;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.util.List;
 
-public interface TestSet {
+public sealed interface TestSet permits TestSetImpl {
     String getName();
     Path getFile();
     List<String> getCovers();

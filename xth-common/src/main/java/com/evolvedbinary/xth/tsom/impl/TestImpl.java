@@ -5,7 +5,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 
-public class TestImpl implements Test {
+public final class TestImpl implements Test {
     @Nullable private final String content;
     @Nullable private final URI file;
 

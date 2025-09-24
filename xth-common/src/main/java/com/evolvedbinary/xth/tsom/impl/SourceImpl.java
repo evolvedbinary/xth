@@ -1,12 +1,17 @@
 package com.evolvedbinary.xth.tsom.impl;
 
-import com.evolvedbinary.xth.tsom.*;
+import com.evolvedbinary.xth.tsom.AbstractBase;
+import com.evolvedbinary.xth.tsom.Created;
+import com.evolvedbinary.xth.tsom.Modified;
+import com.evolvedbinary.xth.tsom.Role;
+import com.evolvedbinary.xth.tsom.Source;
+import com.evolvedbinary.xth.tsom.ValidationMode;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 import java.util.List;
 
-public class SourceImpl extends AbstractBase implements Source {
+public final class SourceImpl extends AbstractBase implements Source {
     @Nullable private final String description;
     @Nullable private final Created created;
     private final List<Modified> modified;

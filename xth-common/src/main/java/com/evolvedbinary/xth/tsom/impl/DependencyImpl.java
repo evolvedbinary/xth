@@ -3,7 +3,7 @@ package com.evolvedbinary.xth.tsom.impl;
 import com.evolvedbinary.xth.tsom.Dependency;
 import com.evolvedbinary.xth.tsom.DependencyType;
 
-public class DependencyImpl implements Dependency {
+public final class DependencyImpl implements Dependency {
     private final DependencyType type;
     private final String value;
     private final boolean satisfied;

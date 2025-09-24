@@ -1,5 +1,6 @@
 package com.evolvedbinary.xth.tsom;
 
-public interface ContextItemRole extends Role {
-    ContextItemRole INSTANCE = new ContextItemRole() { };
+import com.evolvedbinary.xth.tsom.impl.ContextItemRoleImpl;
+
+public sealed interface ContextItemRole extends Role permits ContextItemRoleImpl {
 }

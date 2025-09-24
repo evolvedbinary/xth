@@ -4,7 +4,11 @@ import com.evolvedbinary.xth.connector.api.Connector;
 import com.evolvedbinary.xth.connector.spi.ConnectorProvider;
 import org.jspecify.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ServiceLoader;
 
 public class ConnectorFactory {
 

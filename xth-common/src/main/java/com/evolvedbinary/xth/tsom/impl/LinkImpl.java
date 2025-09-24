@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 
-public class LinkImpl implements Link {
+public final class LinkImpl implements Link {
     private final DependencyType type;
     @Nullable private final String document;
     @Nullable private final String idRef;

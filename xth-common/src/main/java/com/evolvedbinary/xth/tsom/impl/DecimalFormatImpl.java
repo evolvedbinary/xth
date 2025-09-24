@@ -5,7 +5,7 @@ import org.jspecify.annotations.Nullable;
 
 import javax.xml.namespace.QName;
 
-public class DecimalFormatImpl implements DecimalFormat {
+public final class DecimalFormatImpl implements DecimalFormat {
     private final QName name;
     @Nullable private final Character decimalSeparator;
     @Nullable private final Character groupingSeparator;

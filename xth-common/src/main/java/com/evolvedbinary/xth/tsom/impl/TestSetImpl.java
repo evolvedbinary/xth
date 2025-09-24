@@ -1,6 +1,10 @@
 package com.evolvedbinary.xth.tsom.impl;
 
-import com.evolvedbinary.xth.tsom.*;
+import com.evolvedbinary.xth.tsom.AbstractBase;
+import com.evolvedbinary.xth.tsom.Dependency;
+import com.evolvedbinary.xth.tsom.Environment;
+import com.evolvedbinary.xth.tsom.Link;
+import com.evolvedbinary.xth.tsom.TestSet;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Path;
@@ -9,7 +13,7 @@ import java.util.List;
 
 import static com.evolvedbinary.xth.util.ListUtil.toImmutableList;
 
-public class TestSetImpl extends AbstractBase implements TestSet {
+public final class TestSetImpl extends AbstractBase implements TestSet {
     private final String name;
     private final Path file;
     private final List<String> covers;

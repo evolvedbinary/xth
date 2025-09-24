@@ -1,8 +1,10 @@
 package com.evolvedbinary.xth.tsom;
 
+import com.evolvedbinary.xth.tsom.impl.StaticBaseUriImpl;
+
 import java.net.URI;
 
-public interface StaticBaseUri {
+public sealed interface StaticBaseUri permits StaticBaseUriImpl {
 
     /**
      * Get the Static Base URI.

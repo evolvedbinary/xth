@@ -1,12 +1,17 @@
 package com.evolvedbinary.xth.tsom.impl;
 
-import com.evolvedbinary.xth.tsom.*;
+import com.evolvedbinary.xth.tsom.AbstractBase;
+import com.evolvedbinary.xth.tsom.Created;
+import com.evolvedbinary.xth.tsom.Modified;
+import com.evolvedbinary.xth.tsom.Role;
+import com.evolvedbinary.xth.tsom.Schema;
+import com.evolvedbinary.xth.tsom.XsdVersion;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 import java.util.List;
 
-public class SchemaImpl extends AbstractBase implements Schema {
+public final class SchemaImpl extends AbstractBase implements Schema {
 
     @Nullable private final String description;
     @Nullable private final Created created;

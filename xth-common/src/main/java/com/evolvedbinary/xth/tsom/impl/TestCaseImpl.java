@@ -1,7 +1,13 @@
 package com.evolvedbinary.xth.tsom.impl;
 
-import com.evolvedbinary.xth.tsom.*;
+import com.evolvedbinary.xth.tsom.Assertion;
+import com.evolvedbinary.xth.tsom.Created;
+import com.evolvedbinary.xth.tsom.Dependency;
+import com.evolvedbinary.xth.tsom.Environment;
+import com.evolvedbinary.xth.tsom.Modified;
 import com.evolvedbinary.xth.tsom.Module;
+import com.evolvedbinary.xth.tsom.Test;
+import com.evolvedbinary.xth.tsom.TestCase;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -9,7 +15,7 @@ import java.util.List;
 
 import static com.evolvedbinary.xth.util.ListUtil.toImmutableList;
 
-public class TestCaseImpl implements TestCase {
+public final class TestCaseImpl implements TestCase {
     private final String name;
     private final List<String> covers;
     private final List<String> covers30;
