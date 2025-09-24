@@ -1,6 +1,7 @@
 package com.evolvedbinary.xth.util;
 
 import java.io.IOException;
+import java.io.Writer;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,5 +53,30 @@ public interface IOUtil {
 
     static String readFileContent(final Path path) throws IOException {
         return Files.readString(path);
+    }
+
+    final class NullWriter extends Writer {
+        private boolean closed;
+
+        @Override
+        public void write(final char[] cbuf, final int off, final int len) throws IOException {
+            throwIfClosed();
+        }
+
+        @Override
+        public void flush() throws IOException {
+            throwIfClosed();
+        }
+
+        private void throwIfClosed() throws IOException {
+            if (closed) {
+                throw new IOException("NullWriter is closed");
+            }
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+        }
     }
 }

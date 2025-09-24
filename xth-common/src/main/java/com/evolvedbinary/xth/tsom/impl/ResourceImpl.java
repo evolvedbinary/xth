@@ -9,7 +9,7 @@ import org.jspecify.annotations.Nullable;
 import java.net.URI;
 import java.util.List;
 
-public class ResourceImpl extends AbstractBase implements Resource {
+public final class ResourceImpl extends AbstractBase implements Resource {
     @Nullable private final String description;
     @Nullable private final Created created;
     private final List<Modified> modified;

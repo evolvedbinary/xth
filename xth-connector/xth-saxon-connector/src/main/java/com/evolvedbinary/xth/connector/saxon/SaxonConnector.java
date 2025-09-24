@@ -11,6 +11,7 @@ import com.evolvedbinary.xth.tsom.result.TestCaseResult;
 import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultErrorImpl;
 import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultFailureImpl;
 import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultPassImpl;
+import com.evolvedbinary.xth.util.IOUtil;
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
 import net.sf.saxon.Configuration;
@@ -20,6 +21,7 @@ import net.sf.saxon.expr.sort.CodepointCollator;
 import net.sf.saxon.lib.ErrorReporter;
 import net.sf.saxon.lib.ResourceCollection;
 import net.sf.saxon.lib.StringCollator;
+import net.sf.saxon.lib.UnparsedTextURIResolver;
 import net.sf.saxon.om.StructuredQName;
 import net.sf.saxon.resource.XmlResource;
 import net.sf.saxon.s9api.*;
@@ -35,9 +37,12 @@ import javax.xml.namespace.QName;
 import javax.xml.transform.URIResolver;
 import javax.xml.transform.stream.StreamSource;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -129,7 +134,7 @@ public class SaxonConnector implements Connector {
         final DynamicContextInfo dynamicContextInfo;
         try {
             dynamicContextInfo = setupEnvironments(xqueryCompiler, testCaseEnvironments);
-        } catch (final SaxonApiException | XPathException | IOException | URISyntaxException e) {
+        } catch (final XPathException | IOException | URISyntaxException e) {
             throw new ConnectorException(String.format("Error when setting up environments for test case: %s#%s", testSet.getName(), testCase.getName()), e);
         }
 
@@ -326,15 +331,17 @@ public class SaxonConnector implements Connector {
     }
 
     private boolean testAssertSerializationErrorSuccess(final AssertSerializationError assertSerializationError, final EvaluationResultSuccess actualResultSuccess) {
-        final Serializer serializer = assertXpathCompiler.getProcessor().newSerializer();
-        serializer.setOutputProperty(Serializer.Property.METHOD, "xml");
-        serializer.setOutputProperty(Serializer.Property.INDENT, "no");
-        serializer.setOutputProperty(Serializer.Property.OMIT_XML_DECLARATION, "yes");
-        try {
-            serializer.serializeXdmValue(actualResultSuccess.value);
-            return false;
-        } catch (final SaxonApiException err) {
-            return assertSerializationError.getCode().equals(err.getErrorCode().getLocalName());
+        try (final IOUtil.NullWriter writer = new IOUtil.NullWriter()) {
+            final Serializer serializer = assertXpathCompiler.getProcessor().newSerializer(writer);
+            serializer.setOutputProperty(Serializer.Property.METHOD, "xml");
+            serializer.setOutputProperty(Serializer.Property.INDENT, "no");
+            serializer.setOutputProperty(Serializer.Property.OMIT_XML_DECLARATION, "yes");
+            try {
+                serializer.serializeXdmValue(actualResultSuccess.value);
+                return false;
+            } catch (final SaxonApiException err) {
+                return assertSerializationError.getCode().equals(err.getErrorCode().getLocalName());
+            }
         }
     }
 
@@ -455,7 +462,8 @@ public class SaxonConnector implements Connector {
     private boolean evaluateAssertion(final String assertionXpath, final XdmValue actualResult) throws SaxonApiException {
         final XPathSelector xpathSelector = assertXpathCompiler.compile(assertionXpath).load();
         xpathSelector.setVariable(RESULT_QNAME, actualResult);
-        return ((XdmAtomicValue) xpathSelector.evaluateSingle()).getBooleanValue();
+        final XdmItem assertionResult = xpathSelector.evaluateSingle();
+        return ((XdmAtomicValue) assertionResult).getBooleanValue();
     }
 
     private static void setupDynamicContext(final XQueryEvaluator xqueryEvaluator, final DynamicContextInfo dynamicContextInfo) throws SaxonApiException {
@@ -473,10 +481,12 @@ public class SaxonConnector implements Connector {
 
         // Set the URI Resolver
         xqueryEvaluator.setURIResolver(new FotsUriResolver(dynamicContextInfo.sourceDocuments));
+        xqueryEvaluator.setUnparsedTextResolver(new FotsUnparsedTextURIResolver(dynamicContextInfo.resources));
     }
 
-    private DynamicContextInfo setupEnvironments(final XQueryCompiler xqueryCompiler, final List<EnvironmentDefinition> testCaseEnvironments) throws SaxonApiException, ConnectorException, XPathException, IOException, URISyntaxException {
+    private DynamicContextInfo setupEnvironments(final XQueryCompiler xqueryCompiler, final List<EnvironmentDefinition> testCaseEnvironments) throws ConnectorException, XPathException, IOException, URISyntaxException {
         Map<String, XdmNode> sourceDocuments = null;
+        Map<URI, ResourceInfo> resources = null;
         XdmItem contextItem = null;
         Map<net.sf.saxon.s9api.QName, XdmValue> variables = null;
         List<NameAndType> declaredExternalVariables = null;
@@ -494,7 +504,11 @@ public class SaxonConnector implements Connector {
             if (schemaManager != null) {
                 for (final Schema schema : testCaseEnvironment.getSchemas()) {
                     final Path schemaPath = path(testCaseEnvironment.getBaseUri(), schema.getFile());
-                    schemaManager.load(new StreamSource(schemaPath.toFile()));
+                    try {
+                        schemaManager.load(new StreamSource(schemaPath.toFile()));
+                    } catch (final SaxonApiException e) {
+                        throw new ConnectorException(String.format("Unable to load Schema: %s in environment: %s from: %s", schema.getUri(), testCaseEnvironment.getName(), schemaPath), e);
+                    }
                 }
             } else if (!testCaseEnvironments.isEmpty()) {
                 // TODO(AR) warn that we have schemas but there is no schema manager
@@ -518,7 +532,12 @@ public class SaxonConnector implements Connector {
                     }
                 }
 
-                final XdmNode sourceDocument = documentBuilder.build(sourcePath.toFile());
+                final XdmNode sourceDocument;
+                try {
+                    sourceDocument = documentBuilder.build(sourcePath.toFile());
+                } catch (final SaxonApiException e) {
+                    throw new ConnectorException(String.format("Unable to load Source: %s in environment: %s from: %s", source.getUri(), testCaseEnvironment.getName(), sourcePath), e);
+                }
                 if (source.getUri() != null) {
                     sourceDocuments = safePut(sourceDocuments, source.getUri().toString(), sourceDocument);
                 }
@@ -532,9 +551,11 @@ public class SaxonConnector implements Connector {
                 }
             }
 
+            // Configure Resources
             for (final Resource resource : testCaseEnvironment.getResources()) {
-                throw new UnsupportedOperationException("TODO(AR) implement environment resources");
-//                xqueryCompiler.setResource(resource);
+                final Path resourcePath = path(testCaseEnvironment.getBaseUri(), resource.getFile());
+                final ResourceInfo resourceInfo = new ResourceInfo(resource.getUri(), resourcePath, resource.getMediaType(), resource.getEncoding());
+                resources = safePut(resources, resource.getUri(), resourceInfo);
             }
 
             // Configure Variables
@@ -547,7 +568,11 @@ public class SaxonConnector implements Connector {
                     }
                     value = sourceDocument;
                 } else {
-                    value = xpathCompiler.evaluate(parameter.getSelect(), null);
+                    try {
+                        value = xpathCompiler.evaluate(parameter.getSelect(), null);
+                    } catch (final SaxonApiException e) {
+                        throw new ConnectorException(String.format("Could not set variable %s from XPath expression in environment: %s", parameter.getName(), testCaseEnvironment.getName()), e);
+                    }
                 }
 
                 final net.sf.saxon.s9api.QName parameterQName = new net.sf.saxon.s9api.QName(parameter.getName());
@@ -559,7 +584,12 @@ public class SaxonConnector implements Connector {
 
             // Configure Context Item
             if (testCaseEnvironment.getContextItem() != null) {
-                final XdmValue value = xpathCompiler.evaluate(testCaseEnvironment.getContextItem().getSelect(), null);
+                final XdmValue value;
+                try {
+                    value = xpathCompiler.evaluate(testCaseEnvironment.getContextItem().getSelect(), null);
+                } catch (final SaxonApiException e) {
+                    throw new ConnectorException(String.format("Could not set Context Item from XPath expression in environment: %s", testCaseEnvironment.getName()), e);
+                }
                 if (value.size() > 1) {
                     throw new ConnectorException("Context Item evaluates to more than one value");
                 }
@@ -655,8 +685,13 @@ public class SaxonConnector implements Connector {
             }
 
             for (final FunctionLibrary functionLibrary : testCaseEnvironment.getFunctionLibraries()) {
-                final String functionLibraryContent = readFileContent(path(testCaseEnvironment.getBaseUri(), functionLibrary.getXqueryLocation()));
-                xqueryCompiler.compileLibrary(functionLibraryContent);
+                final Path functionLibraryPath = path(testCaseEnvironment.getBaseUri(), functionLibrary.getXqueryLocation());
+                final String functionLibraryContent = readFileContent(functionLibraryPath);
+                try {
+                    xqueryCompiler.compileLibrary(functionLibraryContent);
+                } catch (final SaxonApiException e) {
+                    throw new ConnectorException(String.format("Unable to compile library: %s in environment: %s from: %s", functionLibrary.getName(), testCaseEnvironment.getName(), functionLibraryPath), e);
+                }
             }
 
             // Configure Collections
@@ -694,8 +729,7 @@ public class SaxonConnector implements Connector {
             }
         }
 
-//        return sourceDocuments, contextNode, variables, decimalFormats;
-        return new DynamicContextInfo(sourceDocuments, contextItem, variables);
+        return new DynamicContextInfo(sourceDocuments, resources, contextItem, variables);
     }
 
     private static String getContent(final Test test) throws IOException {
@@ -710,7 +744,7 @@ public class SaxonConnector implements Connector {
         final AtomicReference<EnvironmentSetupState> testSetEnvironmentSetupState = testSetEnvironmentsSetupLocks.computeIfAbsent(testSet.getName(), key -> new AtomicReference<>(EnvironmentSetupState.UNINITIALIZED));
 
         // timeout settings for getting the text environments
-        final long maxWait = 60 * 1024;     // 60 Seconds
+        final long maxWait = 2 * 60 * 1000; // 2 minutes
         final long waitPerLoop = 200;       // 200 Milliseconds
         long waited = 0;
 
@@ -718,7 +752,7 @@ public class SaxonConnector implements Connector {
 
             // check if we have exceeded a timeout
             if (waited > maxWait) {
-                throw new ConnectorException(String.format("Max wait: %i exceeded when trying to get test set environments", maxWait));
+                throw new ConnectorException(String.format("Wait of: %d exceeded timeout: %d when trying to get test set environments, state is: %s", waited, maxWait, testSetEnvironmentSetupState.get()));
             }
 
             // try and get existing environments for the test set
@@ -727,6 +761,7 @@ public class SaxonConnector implements Connector {
                 if (environments == null) {
                     throw new IllegalStateException("Should not be possible to reach this state");
                 }
+                return environments;
             }
 
             // try and resolve the environments for the test set
@@ -948,13 +983,29 @@ public class SaxonConnector implements Connector {
 
     private static class DynamicContextInfo {
         @Nullable final Map<String, XdmNode> sourceDocuments;
+        @Nullable final Map<URI, ResourceInfo> resources;
         @Nullable final XdmItem contextItem;
         @Nullable final Map<net.sf.saxon.s9api.QName, XdmValue> variables;
 
-        public DynamicContextInfo(@Nullable final Map<String, XdmNode> sourceDocuments, @Nullable final XdmItem contextItem, @Nullable final Map<net.sf.saxon.s9api.QName, XdmValue> variables) {
+        public DynamicContextInfo(@Nullable final Map<String, XdmNode> sourceDocuments, @Nullable final Map<URI, ResourceInfo> resources, @Nullable final XdmItem contextItem, @Nullable final Map<net.sf.saxon.s9api.QName, XdmValue> variables) {
             this.sourceDocuments = sourceDocuments;
+            this.resources = resources;
             this.contextItem = contextItem;
             this.variables = variables;
+        }
+    }
+
+    private static class ResourceInfo {
+        final URI uri;
+        final Path file;
+        @Nullable final String mediaType;
+        @Nullable final String encoding;
+
+        public ResourceInfo(final URI uri, final Path file, @Nullable final String mediaType, @Nullable final String encoding) {
+            this.uri = uri;
+            this.file = file;
+            this.mediaType = mediaType;
+            this.encoding = encoding;
         }
     }
 
@@ -974,6 +1025,29 @@ public class SaxonConnector implements Connector {
                 }
             }
 
+            return null;
+        }
+    }
+
+    private static class FotsUnparsedTextURIResolver implements UnparsedTextURIResolver {
+        private @Nullable final Map<URI, ResourceInfo> resources;
+
+        private FotsUnparsedTextURIResolver(@Nullable final Map<URI, ResourceInfo> resources) {
+            this.resources = resources;
+        }
+
+        @Override
+        public Reader resolve(final URI absoluteUri, final String encoding, final Configuration config) throws XPathException {
+            if (resources != null) {
+                final ResourceInfo resourceInfo = resources.get(absoluteUri);
+                if (resourceInfo != null) {
+                    try {
+                        return Files.newBufferedReader(resourceInfo.file);
+                    } catch (final IOException e) {
+                        throw new XPathException(String.format("Unable to read resource: %s", absoluteUri), e);
+                    }
+                }
+            }
             return null;
         }
     }
