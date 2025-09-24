@@ -31,6 +31,12 @@
 
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>xth-connector-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>xth-connector-util</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -40,6 +46,12 @@
             <artifactId>xth-saxon-connector</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>xth-parser-api</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -60,5 +72,20 @@
             <artifactId>jspecify</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <ignoredUnusedDeclaredDependencies>
+                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-saxon-connector:jar:${project.version}:runtime</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-fots-31-parser:jar:${project.version}:runtime</ignoredUnusedDeclaredDependency>
+                    </ignoredUnusedDeclaredDependencies>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
