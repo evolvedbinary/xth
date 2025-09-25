@@ -2,6 +2,7 @@ package com.evolvedbinary.xth.connector.elemental.embedded;
 
 import com.evolvedbinary.xth.connector.api.Connector;
 import com.evolvedbinary.xth.connector.api.ConnectorException;
+import com.evolvedbinary.xth.tsom.Dependency;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
 import com.evolvedbinary.xth.tsom.SpecificationVersion;
 import com.evolvedbinary.xth.tsom.TestCase;
@@ -33,7 +34,7 @@ public class ElementalEmbeddedConnector implements Connector {
     }
 
     @Override
-    public List<Dependency> supports(final List<Dependency> dependencies) {
+    public List<Dependency<?>> supports(final List<Dependency<?>> dependencies) {
         throw new UnsupportedOperationException("TODO(AR) implement");
     }
 

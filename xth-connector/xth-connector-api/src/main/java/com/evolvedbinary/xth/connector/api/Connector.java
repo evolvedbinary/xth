@@ -1,5 +1,6 @@
 package com.evolvedbinary.xth.connector.api;
 
+import com.evolvedbinary.xth.tsom.Dependency;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
 import com.evolvedbinary.xth.tsom.SpecificationVersion;
 import com.evolvedbinary.xth.tsom.TestCase;
@@ -22,7 +23,7 @@ public interface Connector {
      *
      * @return An empty list if all dependencies are supported, otherwise a list of the unsupported dependencies
      */
-    List<Dependency> supports(final List<Dependency> dependencies);
+    List<Dependency<?>> supports(final List<Dependency<?>> dependencies);
 
     TestCaseResult executeTestCase(TestSet testSet, TestCase testCase) throws ConnectorException;
 }

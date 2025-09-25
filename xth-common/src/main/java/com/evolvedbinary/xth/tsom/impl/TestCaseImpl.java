@@ -24,13 +24,13 @@ public final class TestCaseImpl implements TestCase {
     private final List<Modified> modified;
     private final List<Environment> environments;
     private final List<Module> modules;
-    private final List<Dependency> dependencies;
+    private final List<Dependency<?>> dependencies;
     private final Test test;
     private final Assertion result;
 
     public TestCaseImpl(final String name, final List<String> covers, final List<String> covers30,
             @Nullable final String description, @Nullable final Created created, final List<Modified> modified,
-            final List<Environment> environments, final List<Module> modules, final List<Dependency> dependencies,
+            final List<Environment> environments, final List<Module> modules, final List<Dependency<?>> dependencies,
             final Test test, final Assertion result) {
         this.name = name;
         this.covers = covers;
@@ -86,7 +86,7 @@ public final class TestCaseImpl implements TestCase {
     }
 
     @Override
-    public List<Dependency> getDependencies() {
+    public List<Dependency<?>> getDependencies() {
         return dependencies;
     }
 
@@ -114,7 +114,7 @@ public final class TestCaseImpl implements TestCase {
         private List<Modified> modified = null;
         private List<Environment> environments = null;
         private List<Module> modules = null;
-        private List<Dependency> dependencies = null;
+        private List<Dependency<?>> dependencies = null;
         private Test test = null;
         private Assertion result = null;
 
@@ -167,7 +167,7 @@ public final class TestCaseImpl implements TestCase {
         }
 
         @Override
-        public void addDependency(final Dependency dependency) {
+        public void addDependency(final Dependency<?> dependency) {
             if (this.dependencies == null) {
                 this.dependencies = new ArrayList<>();
             }

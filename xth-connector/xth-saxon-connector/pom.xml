@@ -23,6 +23,7 @@
 
     <properties>
         <saxon.version>12.8</saxon.version>
+        <saxon.icu4j.version>77.1</saxon.icu4j.version>
     </properties>
 
     <dependencies>
@@ -68,7 +69,26 @@
                     <artifactId>Saxon-PE</artifactId>
                     <version>${saxon.version}</version>
                 </dependency>
+                <dependency>
+                    <groupId>com.ibm.icu</groupId>
+                    <artifactId>icu4j</artifactId>
+                    <version>${saxon.icu4j.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
             </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <configuration>
+                            <ignoredUnusedDeclaredDependencies>
+                                <ignoredUnusedDeclaredDependency>com.ibm.icu:icu4j:jar:${saxon.icu4j.version}:runtime</ignoredUnusedDeclaredDependency>
+                            </ignoredUnusedDeclaredDependencies>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <profile>
             <id>saxon-ee</id>
@@ -78,7 +98,26 @@
                     <artifactId>Saxon-EE</artifactId>
                     <version>${saxon.version}</version>
                 </dependency>
+                <dependency>
+                    <groupId>com.ibm.icu</groupId>
+                    <artifactId>icu4j</artifactId>
+                    <version>${saxon.icu4j.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
             </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <configuration>
+                            <ignoredUnusedDeclaredDependencies>
+                                <ignoredUnusedDeclaredDependency>com.ibm.icu:icu4j:jar:${saxon.icu4j.version}:runtime</ignoredUnusedDeclaredDependency>
+                            </ignoredUnusedDeclaredDependencies>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 

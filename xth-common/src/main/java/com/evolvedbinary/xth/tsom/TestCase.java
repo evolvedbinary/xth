@@ -14,7 +14,7 @@ public sealed interface TestCase permits TestCaseImpl {
     List<Modified> getModified();
     List<Environment> getEnvironments();
     List<Module> getModules();
-    List<Dependency> getDependencies();
+    List<Dependency<?>> getDependencies();
     Test getTest();
     Assertion getResult();
 
@@ -26,7 +26,7 @@ public sealed interface TestCase permits TestCaseImpl {
         void addModified(Modified modified);
         void addEnvironment(Environment environment);
         void addModule(Module module);
-        void addDependency(Dependency dependency);
+        void addDependency(Dependency<?> dependency);
         void setTest(Test test);
         void setResult(Assertion assertion);
         TestCase build();

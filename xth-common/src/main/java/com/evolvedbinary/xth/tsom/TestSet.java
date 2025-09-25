@@ -14,7 +14,7 @@ public sealed interface TestSet permits TestSetImpl {
     @Nullable String getDescription();
     List<Link> getLinks();
     List<Environment> getEnvironments();
-    List<Dependency> getDependencies();
+    List<Dependency<?>> getDependencies();
 
     interface Builder {
         void setFile(Path file);
@@ -23,7 +23,7 @@ public sealed interface TestSet permits TestSetImpl {
         void setDescription(String description);
         void addLink(Link link);
         void addEnvironment(Environment environment);
-        void addDependency(Dependency dependency);
+        void addDependency(Dependency<?> dependency);
         TestSet build();
     }
 }

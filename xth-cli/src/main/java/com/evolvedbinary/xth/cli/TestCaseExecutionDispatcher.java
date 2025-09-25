@@ -3,11 +3,13 @@ package com.evolvedbinary.xth.cli;
 import com.evolvedbinary.xth.connector.api.Connector;
 import com.evolvedbinary.xth.connector.api.ConnectorException;
 import com.evolvedbinary.xth.parser.api.ParserEventListener;
+import com.evolvedbinary.xth.tsom.Dependency;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
 import com.evolvedbinary.xth.tsom.SpecificationVersion;
 import com.evolvedbinary.xth.tsom.TestCase;
 import com.evolvedbinary.xth.tsom.TestSet;
 import com.evolvedbinary.xth.tsom.result.TestCaseResult;
+import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultSkippedImpl;
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.NotThreadSafe;
 import org.jspecify.annotations.Nullable;
@@ -22,6 +24,9 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import static com.evolvedbinary.xth.util.MapUtil.*;
 import static com.evolvedbinary.xth.util.SetUtil.safeAdd;
@@ -105,7 +110,7 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
                 waitUntil(connectorInitialized::get, initialized -> initialized == true);
 
                 // does the connector support the dependencies required by this Test Set?
-                final List<Dependency> testSetUnmetDependencies = connector.supports(testSet.getDependencies());
+                final List<Dependency<?>> testSetUnmetDependencies = connector.supports(testSet.getDependencies());
                 // TODO(AR) pass on the details of the testSetUnmetDependencies to the TestCaseResultSkipped class
                 testSetInfo.dependenciesMet.set(testSetUnmetDependencies.isEmpty() ? DependenciesCheckState.MET : DependenciesCheckState.NOT_MET);
                 return null;
@@ -132,7 +137,7 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
                 }
 
                 // Are the dependencies of the Test Case met?
-                final List<Dependency> testCaseUnmetDependencies = connector.supports(testCase.getDependencies());
+                final List<Dependency<?>> testCaseUnmetDependencies = connector.supports(testCase.getDependencies());
                 if (!testCaseUnmetDependencies.isEmpty()) {
                     // dependencies for the Test Case are not met, we can skip this Test Case
                     // TODO(AR) pass on the details of the testCaseUnmetDependencies to the TestCaseResultSkipped class

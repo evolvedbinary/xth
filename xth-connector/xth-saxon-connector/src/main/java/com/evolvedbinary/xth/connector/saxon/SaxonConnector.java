@@ -12,6 +12,7 @@ import com.evolvedbinary.xth.tsom.Dependency;
 import com.evolvedbinary.xth.tsom.Environment;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
 import com.evolvedbinary.xth.tsom.EnvironmentReference;
+import com.evolvedbinary.xth.tsom.Feature;
 import com.evolvedbinary.xth.tsom.FunctionLibrary;
 import com.evolvedbinary.xth.tsom.Namespace;
 import com.evolvedbinary.xth.tsom.Parameter;
@@ -46,6 +47,14 @@ import com.evolvedbinary.xth.tsom.assertion.AssertType;
 import com.evolvedbinary.xth.tsom.assertion.AssertXml;
 import com.evolvedbinary.xth.tsom.dependency.SpecificationDependency;
 import com.evolvedbinary.xth.tsom.dependency.SpecificationVersionDescription;
+import com.evolvedbinary.xth.tsom.dependency.impl.CollectionStabilityDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.DefaultLanguageDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.FeatureDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.SchemaAwareDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.SpecificationDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.SpecificationVersionDescriptionImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.XmlVersionDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.XsdVersionDependencyImpl;
 import com.evolvedbinary.xth.tsom.result.TestCaseResult;
 import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultErrorImpl;
 import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultFailureImpl;
@@ -126,6 +135,7 @@ public class SaxonConnector implements Connector {
 
     private Processor processor;
     private XPathCompiler assertXpathCompiler;
+    private Set<Dependency<?>> supportedDependencies;
 
     /**
      * Environments declared globally.
@@ -189,11 +199,90 @@ public class SaxonConnector implements Connector {
 //        assertXpc.declareNamespace("math", NamespaceConstant.MATH);
 //        assertXpc.declareNamespace("map", NamespaceConstant.MAP_FUNCTIONS);
         this.assertXpathCompiler.declareVariable(RESULT_QNAME);
+
+        // Setup supported dependencies of the processor
+        this.supportedDependencies = getSupportedDependencies();
+    }
+
+    private Set<Dependency<?>> getSupportedDependencies() {
+        final Set<Dependency<?>> supportedDependencies = new HashSet<>();
+        final Set<Feature> supportedFeatures = new HashSet<>();
+
+        // Common dependencies of all Saxon editions
+        // TODO(AR) - CalendarDependencyImpl
+        supportedDependencies.add(new CollectionStabilityDependencyImpl(true, true));
+        supportedDependencies.add(new DefaultLanguageDependencyImpl(processor.getUnderlyingConfiguration().getDefaultLanguage(), true));
+        // TODO(AR) - DirectoryAsCollectionUriDependencyImpl
+        // TODO(AR) - FormatIntegerSequenceDependencyImpl
+        // TODO(AR) - LanguageDependencyImpl
+        // TODO(AR) - LimitsDependencyImpl
+        supportedDependencies.add(new SchemaAwareDependencyImpl("PE".equals(processor.getSaxonEdition()) || "EE".equals(processor.getSaxonEdition()), true));
+        supportedDependencies.add(new SpecificationDependencyImpl(Set.of(
+            new SpecificationVersionDescriptionImpl(SpecificationVersion.XPATH_1_0, false),
+            new SpecificationVersionDescriptionImpl(SpecificationVersion.XPATH_2_0, false),
+            new SpecificationVersionDescriptionImpl(SpecificationVersion.XPATH_3_0, false),
+            new SpecificationVersionDescriptionImpl(SpecificationVersion.XPATH_3_1, false),
+            new SpecificationVersionDescriptionImpl(SpecificationVersion.XPATH_4_0, false),
+            new SpecificationVersionDescriptionImpl(SpecificationVersion.XQUERY_3_1, false),
+            new SpecificationVersionDescriptionImpl(SpecificationVersion.XQUERY_4_0, false)
+        ), true));
+        // TODO(AR) - UnicodeNormalizationFormDependencyImpl
+        // TODO(AR) - UnicodeVersionDependencyImpl
+        supportedDependencies.add(new XmlVersionDependencyImpl("1.0", true));
+        supportedDependencies.add(new XmlVersionDependencyImpl("1.1", true));
+
+        // Common features of all Saxon editions
+        supportedFeatures.add(Feature.COLLECTION_STABILITY);
+        supportedFeatures.add(Feature.FN_TRANSFORM_XSLT);
+        supportedFeatures.add(Feature.FN_TRANSFORM_XSLT_3_0);
+        supportedFeatures.add(Feature.HIGHER_ORDER_FUNCTIONS);
+        // TODO(AR) Feature.DIRECTORY_AS_COLLECTION_URI
+        supportedFeatures.add(Feature.MODULE_IMPORT);
+        supportedFeatures.add(Feature.NAMESPACE_AXIS);
+        //TODO(AR) - Feature.NON_EMPTY_SEQUENCE_COLLECTION
+        supportedFeatures.add(Feature.OLSON_TIMEZONE);
+        supportedFeatures.add(Feature.REMOTE_HTTP);
+        supportedFeatures.add(Feature.SERIALIZATION);
+        supportedFeatures.add(Feature.XPATH_1_0_COMPATIBILITY);
+
+        // PE and EE edition supported dependencies
+        if ("PE".equals(processor.getSaxonEdition()) || "EE".equals(processor.getSaxonEdition())) {
+            supportedFeatures.add(Feature.ARBITRARY_PRECISION_DECIMAL);
+            supportedFeatures.add(Feature.ADVANCED_UCA_FALLBACK);               // NOTE(AR) icu4j should be on the classpath
+            supportedFeatures.add(Feature.FN_FORMAT_INTEGER_CLDR);
+            supportedFeatures.add(Feature.FN_LOAD_XQUERY_MODULE);
+            supportedFeatures.add(Feature.INFOSET_DTD);
+            supportedFeatures.add(Feature.NON_UNICODE_CODEPOINT_COLLATION);     // NOTE(AR) icu4j should be on the classpath
+            supportedFeatures.add(Feature.SIMPLE_UCA_FALLBACK);                 // NOTE(AR) icu4j should be on the classpath
+            supportedFeatures.add(Feature.STATIC_TYPING);
+        }
+
+        // EE edition only supported dependencies
+        if ("EE".equals(processor.getSaxonEdition())) {
+            supportedFeatures.add(Feature.SCHEMA_IMPORT);
+            supportedFeatures.add(Feature.SCHEMA_LOCATION_HINT);
+            supportedFeatures.add(Feature.SCHEMA_VALIDATION);
+            supportedFeatures.add(Feature.TYPED_DATA);
+            supportedDependencies.add(new XsdVersionDependencyImpl("1.0", true));
+            supportedDependencies.add(new XsdVersionDependencyImpl("1.1", true));
+        }
+
+        supportedDependencies.add(new FeatureDependencyImpl(supportedFeatures, true));
+
+        return supportedDependencies;
     }
 
     @Override
-    public List<Dependency> supports(final List<Dependency> dependencies) {
-        throw new UnsupportedOperationException("TODO(AR) implement");
+    public List<Dependency<?>> supports(final List<Dependency<?>> dependencies) {
+        // TODO(AR) need to make this more intelligent e.g. SpecificationVersionDescription#isNewerVersionAllowed
+        final List<Dependency<?>> unsupportedDependencies = new ArrayList<>();
+        for (final Dependency<?> dependency : dependencies) {
+            final boolean supported = supportedDependencies.contains(dependency);
+            if ((dependency.isSatisfied() && !supported) || ((!dependency.isSatisfied()) && supported)) {
+                unsupportedDependencies.add(dependency);
+            }
+        }
+        return unsupportedDependencies;
     }
 
     @Override
@@ -339,14 +428,14 @@ public class SaxonConnector implements Connector {
     private static List<SpecificationDependency> getTestCaseSpecifications(final TestSet testSet, final TestCase testCase) {
         // test case dependencies first
         final List<SpecificationDependency> specificationDependencies = new ArrayList<>();
-        for (final Dependency testCaseDependency : testCase.getDependencies()) {
+        for (final Dependency<?> testCaseDependency : testCase.getDependencies()) {
             if (testCaseDependency instanceof SpecificationDependency specificationDependency) {
                 specificationDependencies.add(specificationDependency);
             }
         }
 
         // test set dependencies second
-        for (final Dependency testSetDependency : testSet.getDependencies()) {
+        for (final Dependency<?> testSetDependency : testSet.getDependencies()) {
             if (testSetDependency instanceof SpecificationDependency specificationDependency) {
                 specificationDependencies.add(specificationDependency);
             }
@@ -690,11 +779,15 @@ public class SaxonConnector implements Connector {
                     }
                 }
 
-                final XdmNode sourceDocument;
+                XdmNode sourceDocument;
                 try {
                     sourceDocument = documentBuilder.build(sourcePath.toFile());
                 } catch (final SaxonApiException e) {
-                    throw new ConnectorException(String.format("Unable to load Source: %s in environment: %s from: %s", source.getUri(), testCaseEnvironment.getName(), sourcePath), e);
+                    if (Files.exists(sourcePath)) {
+                        sourceDocument = InvalidSourceDocument.INSTANCE;
+                    } else {
+                        throw new ConnectorException(String.format("Unable to load Source: %s in environment: %s from: %s", source.getUri(), testCaseEnvironment.getName(), sourcePath), e);
+                    }
                 }
                 if (source.getUri() != null) {
                     sourceDocuments = safePut(sourceDocuments, source.getUri().toString(), sourceDocument);
@@ -1267,6 +1360,14 @@ public class SaxonConnector implements Connector {
                 error.getLocation().getLineNumber(),
                 error.getLocation().getColumnNumber()
             ));
+        }
+    }
+
+    private static class InvalidSourceDocument extends XdmNode {
+        public static final XdmNode INSTANCE = new InvalidSourceDocument();
+
+        private InvalidSourceDocument() {
+            super(null);
         }
     }
 }

@@ -486,7 +486,7 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
         return DependencyType.valueOf(dependencyType.name());
     }
 
-    private static com.evolvedbinary.xth.tsom.@Nullable Dependency toTsom(@Nullable final Dependency dependency) throws ParserException {
+    private static com.evolvedbinary.xth.tsom.@Nullable Dependency<?> toTsom(@Nullable final Dependency dependency) throws ParserException {
         if (dependency == null) {
             return null;
         }

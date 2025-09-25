@@ -21,11 +21,11 @@ public final class TestSetImpl extends AbstractBase implements TestSet {
     @Nullable private final String description;
     private final List<Link> links;
     private final List<Environment> environments;
-    private final List<Dependency> dependencies;
+    private final List<Dependency<?>> dependencies;
 
     public TestSetImpl(final String xmlId, final String name, final Path file, final List<String> covers,
             final List<String> covers30, @Nullable final String description, final List<Link> links,
-            final List<Environment> environments, final List<Dependency> dependencies) {
+            final List<Environment> environments, final List<Dependency<?>> dependencies) {
         super(xmlId);
         this.name = name;
         this.file = file;
@@ -73,7 +73,7 @@ public final class TestSetImpl extends AbstractBase implements TestSet {
     }
 
     @Override
-    public List<Dependency> getDependencies() {
+    public List<Dependency<?>> getDependencies() {
         return dependencies;
     }
 
@@ -89,7 +89,7 @@ public final class TestSetImpl extends AbstractBase implements TestSet {
         @Nullable private String description = null;
         private List<Link> links = null;
         private List<Environment> environments = null;
-        private List<Dependency> dependencies = null;
+        private List<Dependency<?>> dependencies = null;
 
         private Builder(final String name) {
             this.name = name;
@@ -132,7 +132,7 @@ public final class TestSetImpl extends AbstractBase implements TestSet {
         }
 
         @Override
-        public void addDependency(final Dependency dependency) {
+        public void addDependency(final Dependency<?> dependency) {
             if (dependencies == null) {
                 dependencies = new ArrayList<>();
             }
