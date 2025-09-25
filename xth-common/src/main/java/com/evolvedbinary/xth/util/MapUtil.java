@@ -3,12 +3,21 @@ package com.evolvedbinary.xth.util;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
 public interface MapUtil {
+
+    static <K, V> Map<K, V> toImmutableMap(final Map<K, V> map) {
+        if (map == null) {
+            return Collections.emptyMap();
+        } else {
+            return Collections.unmodifiableMap(map);
+        }
+    }
 
     static <K, V> Map<K, List<V>> safePutList(@Nullable Map<K, List<V>> map, final K key, final V value) {
         return safePutList(map, key, value, HashMap::new, ArrayList::new);

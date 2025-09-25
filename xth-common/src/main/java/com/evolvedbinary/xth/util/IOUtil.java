@@ -3,6 +3,7 @@ package com.evolvedbinary.xth.util;
 import java.io.IOException;
 import java.io.Writer;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -52,7 +53,7 @@ public interface IOUtil {
     }
 
     static String readFileContent(final Path path) throws IOException {
-        return Files.readString(path);
+        return Files.readString(path, StandardCharsets.UTF_8);
     }
 
     final class NullWriter extends Writer {

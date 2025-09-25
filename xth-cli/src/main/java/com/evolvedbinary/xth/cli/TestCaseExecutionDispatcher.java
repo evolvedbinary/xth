@@ -4,6 +4,7 @@ import com.evolvedbinary.xth.connector.api.Connector;
 import com.evolvedbinary.xth.connector.api.ConnectorException;
 import com.evolvedbinary.xth.parser.api.ParserEventListener;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
+import com.evolvedbinary.xth.tsom.SpecificationVersion;
 import com.evolvedbinary.xth.tsom.TestCase;
 import com.evolvedbinary.xth.tsom.TestSet;
 import com.evolvedbinary.xth.tsom.result.TestCaseResult;
@@ -36,7 +37,7 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
 
     private @Nullable Set<TestResultsListener> listeners;
 
-    private @Nullable Map<UUID, Path> tsCatalogs;
+    private @Nullable Map<UUID, CatalogInfo> tsCatalogs;
     private @Nullable Map<UUID, List<EnvironmentDefinition>> tsGlobalEnvironments;
     private @Nullable Map<UUID, Map<UUID, TestSet>> tsTestSets;
 
@@ -56,8 +57,8 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
     }
 
     @Override
-    public void startParseCatalog(final UUID parseId, final Path catalogFile) {
-        tsCatalogs = safePut(tsCatalogs, parseId, catalogFile);
+    public void startParseCatalog(final UUID parseId, final Path catalogFile, final SpecificationVersion defaultSpecification) {
+        tsCatalogs = safePut(tsCatalogs, parseId, new CatalogInfo(catalogFile, defaultSpecification));
     }
 
     @Override
@@ -72,12 +73,14 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
 
     @Override
     public void endParseCatalogEnvironments(final UUID parseId) {
-        final Path baseUri = tsCatalogs.get(parseId).getParent();
+        final CatalogInfo catalogInfo = tsCatalogs.get(parseId);
+        final Path baseUri = catalogInfo.catalogFile.getParent();
+        final SpecificationVersion defaultSpecification = catalogInfo.defaultSpecification;
         final List<EnvironmentDefinition> globalEnvironments = tsGlobalEnvironments.remove(parseId);
         stsTestCaseExecutor.fork(new Callable() {
             @Override
             public Void call() throws ConnectorException {
-                connector.initialize(baseUri, globalEnvironments);
+                connector.initialize(baseUri, defaultSpecification, globalEnvironments);
                 connectorInitialized.set(true);
                 return null;
             }
@@ -158,5 +161,15 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
     @Override
     public void endParseCatalog(final UUID parseId) {
         tsCatalogs.remove(parseId);
+    }
+
+    private static class CatalogInfo {
+        final Path catalogFile;
+        final SpecificationVersion defaultSpecification;
+
+        private CatalogInfo(final Path catalogFile, final SpecificationVersion defaultSpecification) {
+            this.catalogFile = catalogFile;
+            this.defaultSpecification = defaultSpecification;
+        }
     }
 }

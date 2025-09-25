@@ -4,8 +4,6 @@ import com.evolvedbinary.xth.tsom.DependencyType;
 import com.evolvedbinary.xth.tsom.Link;
 import org.jspecify.annotations.Nullable;
 
-import java.net.URI;
-
 public final class LinkImpl implements Link {
     private final DependencyType type;
     @Nullable private final String document;

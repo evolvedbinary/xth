@@ -5,6 +5,8 @@ import com.evolvedbinary.xth.parser.api.ParserException;
 import com.evolvedbinary.xth.parser.api.TestSuiteParser;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
 import com.evolvedbinary.xth.tsom.DependencyType;
+import com.evolvedbinary.xth.tsom.Feature;
+import com.evolvedbinary.xth.tsom.SpecificationVersion;
 import com.evolvedbinary.xth.tsom.ValidationMode;
 import com.evolvedbinary.xth.tsom.XsdVersion;
 import com.evolvedbinary.xth.tsom.assertion.impl.AssertAllOfImpl;
@@ -25,13 +27,28 @@ import com.evolvedbinary.xth.tsom.assertion.impl.AssertStringValueImpl;
 import com.evolvedbinary.xth.tsom.assertion.impl.AssertTrueImpl;
 import com.evolvedbinary.xth.tsom.assertion.impl.AssertTypeImpl;
 import com.evolvedbinary.xth.tsom.assertion.impl.AssertXmlImpl;
+import com.evolvedbinary.xth.tsom.dependency.SpecificationVersionDescription;
+import com.evolvedbinary.xth.tsom.dependency.impl.CalendarDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.CollectionStabilityDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.DefaultLanguageDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.DirectoryAsCollectionUriDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.FeatureDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.FormatIntegerSequenceDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.LanguageDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.LimitsDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.SchemaAwareDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.SpecificationDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.SpecificationVersionDescriptionImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.UnicodeNormalizationFormDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.UnicodeVersionDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.XmlVersionDependencyImpl;
+import com.evolvedbinary.xth.tsom.dependency.impl.XsdVersionDependencyImpl;
 import com.evolvedbinary.xth.tsom.impl.CollationImpl;
 import com.evolvedbinary.xth.tsom.impl.CollectionImpl;
 import com.evolvedbinary.xth.tsom.impl.ContextItemImpl;
 import com.evolvedbinary.xth.tsom.impl.ContextItemRoleImpl;
 import com.evolvedbinary.xth.tsom.impl.CreatedImpl;
 import com.evolvedbinary.xth.tsom.impl.DecimalFormatImpl;
-import com.evolvedbinary.xth.tsom.impl.DependencyImpl;
 import com.evolvedbinary.xth.tsom.impl.EnvironmentDefinitionImpl;
 import com.evolvedbinary.xth.tsom.impl.EnvironmentReferenceImpl;
 import com.evolvedbinary.xth.tsom.impl.FunctionLibraryImpl;
@@ -95,11 +112,17 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.evolvedbinary.xth.parser.fots31.JAXBUtil.unmarshal;
+import static com.evolvedbinary.xth.util.BooleanUtil.parseToBoolean;
+import static com.evolvedbinary.xth.util.ListUtil.toImmutableList;
+import static com.evolvedbinary.xth.util.SetUtil.toImmutableSet;
 
 public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuiteParser {
 
@@ -122,7 +145,7 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
         final Path catalogFile = testSuiteDirectory.resolve(FOTS31Constants.CATALOG_FILE_NAME);
 
         // Start parsing
-        emitEvent(listener -> listener.startParseCatalog(parseId, catalogFile));
+        emitEvent(listener -> listener.startParseCatalog(parseId, catalogFile, SpecificationVersion.XQUERY_3_1));
 
         final Catalog catalog = unmarshal(new Path[] { xmlSchemaFile, catalogSchemaFile}, Catalog.class, catalogFile);
 
@@ -353,7 +376,7 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
 
         final List<com.evolvedbinary.xth.tsom.Source> sources = new ArrayList<>(collection.getSource().size());
         for (final SourceType source : collection.getSource()) {
-                sources.add(toTsom(source));
+            sources.add(toTsom(source));
         }
 
         final List<com.evolvedbinary.xth.tsom.Resource> resources = new ArrayList<>(collection.getResource().size());
@@ -368,9 +391,9 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
 
         return new CollectionImpl(
             toUri(collection.getUri()),
-            sources,
-            resources,
-            queries
+            toImmutableList(sources),
+            toImmutableList(resources),
+            toImmutableList(queries)
         );
     }
 
@@ -467,11 +490,41 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
         if (dependency == null) {
             return null;
         }
-        return new DependencyImpl(
-            toTsom(dependency.getType()),
-            dependency.getValue(),
-            dependency.isSatisfied()
-        );
+
+        return switch (dependency.getType()) {
+            case DependencyEnumType.CALENDAR -> new CalendarDependencyImpl(dependency.getValue(), dependency.isSatisfied());
+            case DependencyEnumType.COLLECTION_STABILITY -> new CollectionStabilityDependencyImpl(parseToBoolean(dependency.getValue()), dependency.isSatisfied());
+            case DependencyEnumType.DEFAULT_LANGUAGE -> new DefaultLanguageDependencyImpl(dependency.getValue(), dependency.isSatisfied());
+            case DependencyEnumType.DIRECTORY_AS_COLLECTION_URI -> new DirectoryAsCollectionUriDependencyImpl(parseToBoolean(dependency.getValue()), dependency.isSatisfied());
+            case DependencyEnumType.FEATURE -> new FeatureDependencyImpl(toFeatures(dependency.getValue()), dependency.isSatisfied());
+            case DependencyEnumType.FORMAT_INTEGER_SEQUENCE -> new FormatIntegerSequenceDependencyImpl(dependency.getValue(), dependency.isSatisfied());
+            case DependencyEnumType.LANGUAGE -> new LanguageDependencyImpl(dependency.getValue(), dependency.isSatisfied());
+            case DependencyEnumType.LIMITS -> new LimitsDependencyImpl(dependency.getValue(), dependency.isSatisfied());
+            case DependencyEnumType.SPEC -> new SpecificationDependencyImpl(toSpecificationVersions(dependency.getValue()), dependency.isSatisfied());
+            case DependencyEnumType.SCHEMA_AWARE -> new SchemaAwareDependencyImpl(parseToBoolean(dependency.getValue()), dependency.isSatisfied());
+            case DependencyEnumType.UNICODE_NORMALIZATION_FORM -> new UnicodeNormalizationFormDependencyImpl(dependency.getValue(), dependency.isSatisfied());
+            case DependencyEnumType.UNICODE_VERSION -> new UnicodeVersionDependencyImpl(dependency.getValue(), dependency.isSatisfied());
+            case DependencyEnumType.XML_VERSION -> new XmlVersionDependencyImpl(dependency.getValue(), dependency.isSatisfied());
+            case DependencyEnumType.XSD_VERSION -> new XsdVersionDependencyImpl(dependency.getValue(), dependency.isSatisfied());
+        };
+    }
+
+    private static Set<SpecificationVersionDescription> toSpecificationVersions(final String specificationsString) {
+        final String[] parts = specificationsString.trim().split(" ");
+        final Set<SpecificationVersionDescription> specificationVersions = new LinkedHashSet<>();
+        for (final String part : parts) {
+            specificationVersions.add(SpecificationVersionDescriptionImpl.fromFotsName(part));
+        }
+        return toImmutableSet(specificationVersions);
+    }
+
+    private static Set<Feature> toFeatures(final String featuresString) {
+        final String[] parts = featuresString.trim().split(" ");
+        final List<Feature> features = new ArrayList<>();
+        for (final String part : parts) {
+            features.add(Feature.fromFotsName(part));
+        }
+        return EnumSet.copyOf(features);
     }
 
     private static com.evolvedbinary.xth.tsom.@Nullable TestCase toTsom(final URI testCaseBaseUri, @Nullable final TestCase testCase) throws ParserException {
@@ -665,9 +718,9 @@ public class FOTS31Parser extends AbstractTestSuiteParser implements TestSuitePa
             subResults.add(toAssertion(subAssertion));
         }
         if (ObjectFactory._AllOf_QNAME.equals(sequenceOfAssertionsTypeName)) {
-            return new AssertAllOfImpl(subResults);
+            return new AssertAllOfImpl(toImmutableList(subResults));
         } else if (ObjectFactory._AnyOf_QNAME.equals(sequenceOfAssertionsTypeName)) {
-            return new AssertAnyOfImpl(subResults);
+            return new AssertAnyOfImpl(toImmutableList(subResults));
         } else {
             throw new ParserException("Unexpected sequence of assertions object: " + sequenceOfAssertionsTypeName);
         }

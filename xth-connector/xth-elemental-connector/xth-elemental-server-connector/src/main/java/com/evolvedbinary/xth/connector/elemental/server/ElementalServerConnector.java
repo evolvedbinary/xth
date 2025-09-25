@@ -3,6 +3,7 @@ package com.evolvedbinary.xth.connector.elemental.server;
 import com.evolvedbinary.xth.connector.api.Connector;
 import com.evolvedbinary.xth.connector.api.ConnectorException;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
+import com.evolvedbinary.xth.tsom.SpecificationVersion;
 import com.evolvedbinary.xth.tsom.TestCase;
 import com.evolvedbinary.xth.tsom.TestSet;
 import com.evolvedbinary.xth.tsom.result.TestCaseResult;
@@ -27,7 +28,7 @@ public class ElementalServerConnector implements Connector {
     }
 
     @Override
-    public void initialize(final Path baseUri, final List<EnvironmentDefinition> globalEnvironments) throws ConnectorException {
+    public void initialize(final Path baseUri, final SpecificationVersion defaultSpecification, final List<EnvironmentDefinition> globalEnvironments) throws ConnectorException {
         throw new UnsupportedOperationException("TODO(AR) implement");
     }
 

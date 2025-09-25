@@ -2,6 +2,7 @@ package com.evolvedbinary.xth.cli;
 
 import com.evolvedbinary.xth.parser.api.ParserEventListener;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
+import com.evolvedbinary.xth.tsom.SpecificationVersion;
 import com.evolvedbinary.xth.tsom.TestCase;
 import com.evolvedbinary.xth.tsom.TestSet;
 
@@ -18,7 +19,7 @@ public abstract class AbstractParserEventListenerPrinter implements ParserEventL
     }
 
     @Override
-    public void startParseCatalog(final UUID parseId, final Path catalogFile) {
+    public void startParseCatalog(final UUID parseId, final Path catalogFile, final SpecificationVersion defaultSpecification) {
         printer.accept(String.format("Starting to parse Catalog (%s): %s", parseId, catalogFile));
     }
 

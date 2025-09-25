@@ -8,6 +8,7 @@ import com.evolvedbinary.xth.tsom.Collation;
 import com.evolvedbinary.xth.tsom.Collection;
 import com.evolvedbinary.xth.tsom.ContextItemRole;
 import com.evolvedbinary.xth.tsom.DecimalFormat;
+import com.evolvedbinary.xth.tsom.Dependency;
 import com.evolvedbinary.xth.tsom.Environment;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;
 import com.evolvedbinary.xth.tsom.EnvironmentReference;
@@ -17,9 +18,12 @@ import com.evolvedbinary.xth.tsom.Parameter;
 import com.evolvedbinary.xth.tsom.Resource;
 import com.evolvedbinary.xth.tsom.Schema;
 import com.evolvedbinary.xth.tsom.Source;
+import com.evolvedbinary.xth.tsom.Specification;
+import com.evolvedbinary.xth.tsom.SpecificationVersion;
 import com.evolvedbinary.xth.tsom.Test;
 import com.evolvedbinary.xth.tsom.TestCase;
 import com.evolvedbinary.xth.tsom.TestSet;
+import com.evolvedbinary.xth.tsom.ValidationMode;
 import com.evolvedbinary.xth.tsom.VariableRole;
 import com.evolvedbinary.xth.tsom.assertion.Assert;
 import com.evolvedbinary.xth.tsom.assertion.AssertAllOf;
@@ -40,7 +44,8 @@ import com.evolvedbinary.xth.tsom.assertion.AssertStringValue;
 import com.evolvedbinary.xth.tsom.assertion.AssertTrue;
 import com.evolvedbinary.xth.tsom.assertion.AssertType;
 import com.evolvedbinary.xth.tsom.assertion.AssertXml;
-import com.evolvedbinary.xth.tsom.ValidationMode;
+import com.evolvedbinary.xth.tsom.dependency.SpecificationDependency;
+import com.evolvedbinary.xth.tsom.dependency.SpecificationVersionDescription;
 import com.evolvedbinary.xth.tsom.result.TestCaseResult;
 import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultErrorImpl;
 import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultFailureImpl;
@@ -108,12 +113,16 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.evolvedbinary.xth.util.IOUtil.path;
 import static com.evolvedbinary.xth.util.IOUtil.readFileContent;
 import static com.evolvedbinary.xth.util.ListUtil.safeAdd;
+import static com.evolvedbinary.xth.util.ListUtil.toImmutableList;
 import static com.evolvedbinary.xth.util.MapUtil.safePut;
+import static com.evolvedbinary.xth.util.MapUtil.toImmutableMap;
 
 @ThreadSafe
 public class SaxonConnector implements Connector {
 
     private static final net.sf.saxon.s9api.QName RESULT_QNAME = new net.sf.saxon.s9api.QName("result");
+    private static final SpecificationVersion DEFAULT_XQUERY_VERSION = SpecificationVersion.XQUERY_3_1;
+    private static final SpecificationVersion DEFAULT_XPATH_VERSION = SpecificationVersion.XPATH_3_1;
 
     private Processor processor;
     private XPathCompiler assertXpathCompiler;
@@ -136,6 +145,7 @@ public class SaxonConnector implements Connector {
     private final Map<String, Map<String, EnvironmentDefinition>> testSetEnvironments = new ConcurrentHashMap<>();
     private final Map<String, AtomicReference<EnvironmentSetupState>> testSetEnvironmentsSetupLocks = new ConcurrentHashMap<>();
     private Path baseUri;
+    private SpecificationVersion defaultSpecification;
 
     @Override
     public String getConnectorName() {
@@ -159,8 +169,9 @@ public class SaxonConnector implements Connector {
     }
 
     @Override
-    public void initialize(final Path baseUri, final List<EnvironmentDefinition> globalEnvironments) {
+    public void initialize(final Path baseUri, final SpecificationVersion defaultSpecification, final List<EnvironmentDefinition> globalEnvironments) {
         this.baseUri = baseUri;
+        this.defaultSpecification = defaultSpecification;
         this.globalEnvironments = new HashMap<>(globalEnvironments.size());
         for (final EnvironmentDefinition globalEnvironment : globalEnvironments) {
             this.globalEnvironments.put(globalEnvironment.getName(), globalEnvironment);
@@ -171,8 +182,8 @@ public class SaxonConnector implements Connector {
         this.processor = new Processor(configuration);
 
         // Set up an XPath Compiler for evaluating assertions
-        this.assertXpathCompiler = processor.newXPathCompiler();
-        this.assertXpathCompiler.setLanguageVersion("3.1");  // TODO(AR) make this configurable based on the test suite version
+        this.assertXpathCompiler = processor.newXPathCompiler(); // TODO(AR) does this need a baseURI set i.e. assertXpathCompiler.setBaseURI - if so we can't do this until testset execution time, so we should not reuse the compiler here but create a new one for the test set
+        this.assertXpathCompiler.setLanguageVersion(defaultSpecification.getVersion());
 //        assertXpc.declareNamespace("fn", NamespaceConstant.FN);
 //        assertXpc.declareNamespace("xs", NamespaceConstant.SCHEMA);
 //        assertXpc.declareNamespace("math", NamespaceConstant.MATH);
@@ -182,7 +193,19 @@ public class SaxonConnector implements Connector {
 
     @Override
     public TestCaseResult executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
+        final List<SpecificationDependency> testCaseSpecifications = getTestCaseSpecifications(testSet, testCase);
+        final SpecificationVersion[] xpathXqueryVersion = getXPathAndXQueryVersion(testCaseSpecifications, defaultSpecification);
+        final SpecificationVersion xpathVersion = xpathXqueryVersion[0];
+        final SpecificationVersion xqueryVersion = xpathXqueryVersion[1];
+
         final XQueryCompiler xqueryCompiler = processor.newXQueryCompiler();
+        xqueryCompiler.setLanguageVersion(xqueryVersion.getVersion());
+        xqueryCompiler.setBaseURI(testSet.getFile().toUri());
+
+        final XPathCompiler environmentsXpathCompiler = xqueryCompiler.getProcessor().newXPathCompiler();
+        environmentsXpathCompiler.setLanguageVersion(xpathVersion.getVersion());
+        environmentsXpathCompiler.setBaseURI(testSet.getFile().toUri());
+        environmentsXpathCompiler.setCaching(true);
 
         final Map<String, EnvironmentDefinition> testSetEnvironments = getTestSetEnvironments(testSet);
         final List<EnvironmentDefinition> testCaseEnvironments = getTestCaseEnvironments(testSetEnvironments, testCase);
@@ -190,7 +213,7 @@ public class SaxonConnector implements Connector {
         // Set up the static context, and get the dynamic context
         final DynamicContextInfo dynamicContextInfo;
         try {
-            dynamicContextInfo = setupEnvironments(xqueryCompiler, testCaseEnvironments);
+            dynamicContextInfo = setupEnvironments(environmentsXpathCompiler, xqueryCompiler, testCaseEnvironments);
         } catch (final XPathException | IOException | URISyntaxException e) {
             throw new ConnectorException(String.format("Error when setting up environments for test case: %s#%s", testSet.getName(), testCase.getName()), e);
         }
@@ -248,6 +271,83 @@ public class SaxonConnector implements Connector {
         // Test the assertion against the result of the query
         final long testDuration = (testCompilationEndTime - testCompilationStartTime) + (testExecutionEndTime - testExecutionStartTime);
         return testAssertion(testCase, evaluationResult, testDuration);
+    }
+
+    private static SpecificationVersion[] getXPathAndXQueryVersion(final List<SpecificationDependency> specificationDependencies, final SpecificationVersion defaultSpecification) {
+        SpecificationVersion xpathSpecificationVersion = null;
+        SpecificationVersion xquerySpecificationVersion = null;
+        for (final SpecificationDependency specificationDependency : specificationDependencies) {
+            if (specificationDependency.isSatisfied()) {
+                for (final SpecificationVersionDescription specificationVersionDescription : specificationDependency.getDependencyValue()) {
+                    SpecificationVersion specificationVersion = specificationVersionDescription.getSpecificationVersion();
+
+                    // should we be using the latest version?
+                    if (specificationVersionDescription.isNewerVersionAllowed()) {
+                        final SpecificationVersion[] newerVersions = specificationVersion.getNewerVersions();
+                        if (newerVersions.length > 0) {
+                            // choose latest allowed version
+                            specificationVersion = newerVersions[newerVersions.length - 1];
+                        }
+                    }
+
+                    if (specificationVersion.getSpecification() == Specification.XPATH) {
+                        if (xpathSpecificationVersion == null) {
+                            xpathSpecificationVersion = specificationVersion;
+                        } else {
+                            if (xpathSpecificationVersion.compare(specificationVersion) < 0) {
+                                xpathSpecificationVersion = specificationVersion;
+                            }
+                        }
+
+                    } else if (specificationVersion.getSpecification() == Specification.XQUERY) {
+                        if (xquerySpecificationVersion == null) {
+                            xquerySpecificationVersion = specificationVersion;
+                        } else {
+                            if (xquerySpecificationVersion.compare(specificationVersion) < 0) {
+                                xquerySpecificationVersion = specificationVersion;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (xpathSpecificationVersion == null) {
+            if (defaultSpecification.getSpecification() == Specification.XPATH) {
+                xpathSpecificationVersion = defaultSpecification;
+            } else {
+                xpathSpecificationVersion = DEFAULT_XPATH_VERSION;
+            }
+        }
+
+        if (xquerySpecificationVersion == null) {
+            if (defaultSpecification.getSpecification() == Specification.XQUERY) {
+                xquerySpecificationVersion = defaultSpecification;
+            } else {
+                xquerySpecificationVersion = DEFAULT_XPATH_VERSION;
+            }
+        }
+
+        return new SpecificationVersion[] { xpathSpecificationVersion, xquerySpecificationVersion };
+    }
+
+    private static List<SpecificationDependency> getTestCaseSpecifications(final TestSet testSet, final TestCase testCase) {
+        // test case dependencies first
+        final List<SpecificationDependency> specificationDependencies = new ArrayList<>();
+        for (final Dependency testCaseDependency : testCase.getDependencies()) {
+            if (testCaseDependency instanceof SpecificationDependency specificationDependency) {
+                specificationDependencies.add(specificationDependency);
+            }
+        }
+
+        // test set dependencies second
+        for (final Dependency testSetDependency : testSet.getDependencies()) {
+            if (testSetDependency instanceof SpecificationDependency specificationDependency) {
+                specificationDependencies.add(specificationDependency);
+            }
+        }
+
+        return specificationDependencies;
     }
 
     private TestCaseResult testAssertion(final TestCase testCase, final EvaluationResult evaluationResult, final long testDuration) throws ConnectorException {
@@ -519,8 +619,7 @@ public class SaxonConnector implements Connector {
     private boolean evaluateAssertion(final String assertionXpath, final XdmValue actualResult) throws SaxonApiException {
         final XPathSelector xpathSelector = assertXpathCompiler.compile(assertionXpath).load();
         xpathSelector.setVariable(RESULT_QNAME, actualResult);
-        final XdmItem assertionResult = xpathSelector.evaluateSingle();
-        return ((XdmAtomicValue) assertionResult).getBooleanValue();
+        return xpathSelector.effectiveBooleanValue();
     }
 
     private static void setupDynamicContext(final XQueryEvaluator xqueryEvaluator, final DynamicContextInfo dynamicContextInfo) throws SaxonApiException {
@@ -541,7 +640,7 @@ public class SaxonConnector implements Connector {
         xqueryEvaluator.setUnparsedTextResolver(new FotsUnparsedTextURIResolver(dynamicContextInfo.resources));
     }
 
-    private DynamicContextInfo setupEnvironments(final XQueryCompiler xqueryCompiler, final List<EnvironmentDefinition> testCaseEnvironments) throws ConnectorException, XPathException, IOException, URISyntaxException {
+    private DynamicContextInfo setupEnvironments(final XPathCompiler xpathCompiler, final XQueryCompiler xqueryCompiler, final List<EnvironmentDefinition> testCaseEnvironments) throws ConnectorException, XPathException, IOException, URISyntaxException {
         Map<String, XdmNode> sourceDocuments = null;
         Map<URI, ResourceInfo> resources = null;
         XdmItem contextItem = null;
@@ -549,9 +648,6 @@ public class SaxonConnector implements Connector {
         List<NameAndType> declaredExternalVariables = null;
         Map<QName, Map<String, String>> decimalFormats = null;
 
-        final XPathCompiler xpathCompiler = xqueryCompiler.getProcessor().newXPathCompiler();
-        xpathCompiler.setLanguageVersion("3.0");  // TODO(AR) parameterise the version - should be determined from the test suite
-        xpathCompiler.setCaching(true);
         final SchemaManager schemaManager = xqueryCompiler.getProcessor().getSchemaManager();
         final DocumentBuilder documentBuilder = xqueryCompiler.getProcessor().newDocumentBuilder();
 
@@ -657,8 +753,8 @@ public class SaxonConnector implements Connector {
             final DecimalFormatManager decimalFormatManager = xpathCompiler.getUnderlyingStaticContext().getDecimalFormatManager();
             for (final DecimalFormat decimalFormat : testCaseEnvironment.getDecimalFormats()) {
 
-                final QName formatName = decimalFormat.getName();
-                final StructuredQName formatStructuredName = new StructuredQName(decimalFormat.getName().getPrefix(), decimalFormat.getName().getPrefix(), decimalFormat.getName().getLocalPart());
+                final QName formatName = decimalFormat.getName() == null ? DecimalFormat.DEFAULT_DECIMAL_FORMAT_NAME : decimalFormat.getName();
+                final StructuredQName formatStructuredName = new StructuredQName(formatName.getPrefix(), formatName.getPrefix(), formatName.getLocalPart());
 
                 final DecimalSymbols symbols;
                 if (DecimalFormat.DEFAULT_DECIMAL_FORMAT_NAME.equals(formatName)) {
@@ -848,7 +944,7 @@ public class SaxonConnector implements Connector {
             final EnvironmentDefinition environment = resolveEnvironment(testSetEnvironment, globalEnvironments);
             results.put(environment.getName(), environment);
         }
-        return Collections.unmodifiableMap(results);
+        return toImmutableMap(results);
     }
 
     private static EnvironmentDefinition resolveEnvironment(final Environment environment, final Map<String, EnvironmentDefinition>... environmentDefinitionss) throws ConnectorException {
@@ -883,7 +979,7 @@ public class SaxonConnector implements Connector {
             final EnvironmentDefinition environment = resolveEnvironment(testCaseEnvironment, globalEnvironments, testSetEnvironments);
             results.add(environment);
         }
-        return Collections.unmodifiableList(results);
+        return toImmutableList(results);
     }
 
     private static class NameAndType {
