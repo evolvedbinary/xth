@@ -6,7 +6,7 @@ module xth.common {
     exports com.evolvedbinary.xth.tsom.dependency;
     exports com.evolvedbinary.xth.tsom.dependency.impl to xth.parser.impl.fots31;
     exports com.evolvedbinary.xth.tsom.result;
-    exports com.evolvedbinary.xth.tsom.result.impl to xth.connector.impl.saxon;
+    exports com.evolvedbinary.xth.tsom.result.impl to xth.cli, xth.connector.impl.saxon;
     exports com.evolvedbinary.xth.configuration;
     exports com.evolvedbinary.xth.scm;
     exports com.evolvedbinary.xth.util;

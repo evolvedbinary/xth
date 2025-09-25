@@ -39,7 +39,7 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
 
     private @Nullable Map<UUID, CatalogInfo> tsCatalogs;
     private @Nullable Map<UUID, List<EnvironmentDefinition>> tsGlobalEnvironments;
-    private @Nullable Map<UUID, Map<UUID, TestSet>> tsTestSets;
+    private @Nullable Map<UUID, Map<UUID, TestSetInfo>> tsTestSets;
 
     public TestCaseExecutionDispatcher(final Connector connector, final StructuredTaskScope<Void, Void> stsTestCaseExecutor) {
         this.connector = connector;
@@ -94,48 +94,92 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
 
     @Override
     public void startParseTestSet(final UUID parseId, final UUID testSetId, final TestSet testSet) {
-        tsTestSets = safePutMap(tsTestSets, parseId, testSetId, testSet);
+        final TestSetInfo testSetInfo = new TestSetInfo(testSet);
+        tsTestSets = safePutMap(tsTestSets, parseId, testSetId, testSetInfo);
+
+        // start a thread to calculate whether the dependencies of this Test Set are met
+        stsTestCaseExecutor.fork(new Callable() {
+            public Void call() throws ConnectorException {
+
+                // make sure the connector is initialized before we proceed
+                waitUntil(connectorInitialized::get, initialized -> initialized == true);
+
+                // does the connector support the dependencies required by this Test Set?
+                final List<Dependency> testSetUnmetDependencies = connector.supports(testSet.getDependencies());
+                // TODO(AR) pass on the details of the testSetUnmetDependencies to the TestCaseResultSkipped class
+                testSetInfo.dependenciesMet.set(testSetUnmetDependencies.isEmpty() ? DependenciesCheckState.MET : DependenciesCheckState.NOT_MET);
+                return null;
+            }
+        });
     }
 
     @Override
     public void testCase(final UUID parseId, final UUID testSetId, final UUID testCaseId, final TestCase testCase) {
-        final TestSet testSet = tsTestSets.get(parseId).get(testSetId);
+        final TestSetInfo testSetInfo = tsTestSets.get(parseId).get(testSetId);
+
         stsTestCaseExecutor.fork(new Callable() {
             @Override
             public Void call() throws ConnectorException {
 
-                // timeout settings for awaiting initialisation of the connector
-                final long maxWait = 60 * 1024;     // 60 Seconds
-                final long waitPerLoop = 200;       // 200 Milliseconds
-                long waited = 0;
+                // make sure the dependency check of the Test Set has complete
+                final DependenciesCheckState testSetDependenciesMet = waitUntil(testSetInfo.dependenciesMet::get, state -> state != DependenciesCheckState.UNKNOWN);
 
-                // NOTE(AR) make sure the connector is initialized first, wait if necessary
-                while (connectorInitialized.get() == false) {
-                    // check if we have exceeded a timeout
-                    if (waited > maxWait) {
-                        throw new ConnectorException(String.format("Max wait: %i exceeded when whilst waiting for the connector to be initialized", maxWait));
-                    }
+                // Are the dependencies of the Test Set met?
+                if (testSetDependenciesMet != DependenciesCheckState.MET) {
+                    // dependencies for the Test Set are not met, we can skip all Test Cases in this Test Set
+                    emitTestResult(testSetInfo.testSet, testCase, new TestCaseResultSkippedImpl(String.format("Dependencies for the Test Set: %s have not been met by the Connector", testSetInfo.testSet.getName())));
+                    return null;
+                }
 
-                    try {
-                        Thread.sleep(waitPerLoop);
-                    } catch (final InterruptedException e) {
-                        // restore thread's interrupted flag
-                        Thread.interrupted();
-                        throw new ConnectorException(String.format("Thread interrupted whilst waiting for the connector to be initialized: %s", e.getMessage()), e);
-                    }
-
-                    waited += waitPerLoop;
+                // Are the dependencies of the Test Case met?
+                final List<Dependency> testCaseUnmetDependencies = connector.supports(testCase.getDependencies());
+                if (!testCaseUnmetDependencies.isEmpty()) {
+                    // dependencies for the Test Case are not met, we can skip this Test Case
+                    // TODO(AR) pass on the details of the testCaseUnmetDependencies to the TestCaseResultSkipped class
+                    emitTestResult(testSetInfo.testSet, testCase, new TestCaseResultSkippedImpl(String.format("Dependencies for the Test Case: %s  have not been met by the Connector", testCase.getName())));
+                    return null;
                 }
 
                 // execute the test case
-                final TestCaseResult testCaseResult = connector.executeTestCase(testSet, testCase);
+                final TestCaseResult testCaseResult = connector.executeTestCase(testSetInfo.testSet, testCase);
 
                 // emit the result
-                emitTestResult(testSet, testCase, testCaseResult);
+                emitTestResult(testSetInfo.testSet, testCase, testCaseResult);
 
                 return null;
             }
         });
+    }
+
+    private <T> T waitUntil(final Supplier<T> source, final Predicate<T> predicate) throws ConnectorException {
+        // timeout settings for awaiting initialisation of the connector
+        final long maxWait = 60 * 1024;     // 60 Seconds
+        final long waitPerLoop = 200;       // 200 Milliseconds
+        long waited = 0;
+
+        // NOTE(AR) make sure the connector is initialized first, wait if necessary
+        while (true) {
+
+            final T value = source.get();
+            if (predicate.test(value)) {
+                return value;
+            }
+
+            // check if we have exceeded a timeout
+            if (waited > maxWait) {
+                throw new ConnectorException(String.format("Max wait: %i exceeded when whilst waiting for the connector to be initialized", maxWait));
+            }
+
+            try {
+                Thread.sleep(waitPerLoop);
+            } catch (final InterruptedException e) {
+                // restore thread's interrupted flag
+                Thread.interrupted();
+                throw new ConnectorException(String.format("Thread interrupted whilst waiting for the connector to be initialized: %s", e.getMessage()), e);
+            }
+
+            waited += waitPerLoop;
+        }
     }
 
     private void emitTestResult(final TestSet testSet, final TestCase testCase, final TestCaseResult testCaseResult) {
@@ -171,5 +215,20 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
             this.catalogFile = catalogFile;
             this.defaultSpecification = defaultSpecification;
         }
+    }
+
+    private static class TestSetInfo {
+        private final TestSet testSet;
+        private final AtomicReference<DependenciesCheckState> dependenciesMet = new AtomicReference<>(DependenciesCheckState.UNKNOWN);
+
+        private TestSetInfo(final TestSet testSet) {
+            this.testSet = testSet;
+        }
+    }
+
+    private enum DependenciesCheckState {
+        UNKNOWN,
+        MET,
+        NOT_MET;
     }
 }

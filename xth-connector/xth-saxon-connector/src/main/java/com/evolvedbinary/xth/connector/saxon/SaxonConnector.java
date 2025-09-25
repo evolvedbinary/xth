@@ -192,6 +192,11 @@ public class SaxonConnector implements Connector {
     }
 
     @Override
+    public List<Dependency> supports(final List<Dependency> dependencies) {
+        throw new UnsupportedOperationException("TODO(AR) implement");
+    }
+
+    @Override
     public TestCaseResult executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
         final List<SpecificationDependency> testCaseSpecifications = getTestCaseSpecifications(testSet, testCase);
         final SpecificationVersion[] xpathXqueryVersion = getXPathAndXQueryVersion(testCaseSpecifications, defaultSpecification);

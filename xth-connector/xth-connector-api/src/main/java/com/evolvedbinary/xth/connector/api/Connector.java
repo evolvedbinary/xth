@@ -14,5 +14,15 @@ public interface Connector {
     String getImplementationName() throws ConnectorException;
     String getImplementationVersion() throws ConnectorException;
     void initialize(Path baseUri, SpecificationVersion defaultSpecification, List<EnvironmentDefinition> globalEnvironments) throws ConnectorException;
+
+    /**
+     * Checks whether the implementation supports the required dependencies.
+     *
+     * @param dependencies the required dependencies to check for.
+     *
+     * @return An empty list if all dependencies are supported, otherwise a list of the unsupported dependencies
+     */
+    List<Dependency> supports(final List<Dependency> dependencies);
+
     TestCaseResult executeTestCase(TestSet testSet, TestCase testCase) throws ConnectorException;
 }

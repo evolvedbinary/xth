@@ -33,6 +33,11 @@ public class ElementalEmbeddedConnector implements Connector {
     }
 
     @Override
+    public List<Dependency> supports(final List<Dependency> dependencies) {
+        throw new UnsupportedOperationException("TODO(AR) implement");
+    }
+
+    @Override
     public TestCaseResult executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
         throw new UnsupportedOperationException("TODO(AR) implement");
     }

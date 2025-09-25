@@ -6,6 +6,7 @@ import com.evolvedbinary.xth.tsom.result.TestCaseResult;
 import com.evolvedbinary.xth.tsom.result.TestCaseResultError;
 import com.evolvedbinary.xth.tsom.result.TestCaseResultFailure;
 import com.evolvedbinary.xth.tsom.result.TestCaseResultPass;
+import com.evolvedbinary.xth.tsom.result.TestCaseResultSkipped;
 
 import java.util.function.Consumer;
 
@@ -25,6 +26,7 @@ public abstract class AbstractTestResultsListenerPrinter implements TestResultsL
             case TestCaseResultPass testCaseResultPass -> "Pass";
             case TestCaseResultFailure testCaseResultFailure -> "FAIL"; // TODO(AR) add failure info?
             case TestCaseResultError testCaseResultError -> "ERROR";  // TODO(AR) add error info?
+            case TestCaseResultSkipped testCaseResultSkipped -> "Skipped";  // TODO(AR) add reason info?
         };
         printer.accept(String.format("%s / %s (%s): %s", testSet.getName(), testCase.getName(), toHumaneString(testCaseResult.getExecutionTime()), resultStr));
     }
