@@ -127,7 +127,7 @@
                     <dependency>
                         <groupId>com.helger</groupId>
                         <artifactId>ph-jaxb-plugin</artifactId>
-                        <version>4.0.4-SNAPSHOT</version>
+                        <version>5.1.2</version>
                     </dependency>
                 </dependencies>
             </plugin>
