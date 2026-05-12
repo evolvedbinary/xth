@@ -1,16 +1,27 @@
 package com.evolvedbinary.xth.tsom.result.impl;
 
 import com.evolvedbinary.xth.tsom.result.TestCaseResult;
+import com.evolvedbinary.xth.tsom.result.impl.compiled.AbstractCompiledTestCaseResult;
+import com.evolvedbinary.xth.tsom.result.impl.executed.AbstractExecutedTestCaseResult;
 
-public abstract sealed class AbstractTestCaseResult implements TestCaseResult permits TestCaseResultErrorImpl, TestCaseResultFailureImpl, TestCaseResultPassImpl, TestCaseResultSkippedImpl {
-    private final long executionTime;
+import java.time.Instant;
 
-    protected AbstractTestCaseResult(final long executionTime) {
-        this.executionTime = executionTime;
+public abstract sealed class AbstractTestCaseResult implements TestCaseResult permits AbstractCompiledTestCaseResult, AbstractExecutedTestCaseResult, TestCaseResultSkippedImpl {
+    private final Instant processingStarted;
+    private final Instant processingFinished;
+
+    protected AbstractTestCaseResult(final Instant processingStarted, final Instant processingFinished) {
+        this.processingStarted = processingStarted;
+        this.processingFinished = processingFinished;
     }
 
     @Override
-    public long getExecutionTime() {
-        return executionTime;
+    public Instant getProcessingStarted() {
+        return processingStarted;
+    }
+
+    @Override
+    public Instant getProcessingFinished() {
+        return processingFinished;
     }
 }

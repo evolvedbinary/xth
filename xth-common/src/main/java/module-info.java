@@ -10,6 +10,12 @@ module xth.common {
     exports com.evolvedbinary.xth.configuration;
     exports com.evolvedbinary.xth.scm;
     exports com.evolvedbinary.xth.util;
+    exports com.evolvedbinary.xth.tsom.result.compiled;
+    exports com.evolvedbinary.xth.tsom.result.compiled.executed;
+    exports com.evolvedbinary.xth.tsom.result.executed;
+    exports com.evolvedbinary.xth.tsom.result.impl.compiled to xth.cli, xth.connector.impl.saxon;
+    exports com.evolvedbinary.xth.tsom.result.impl.compiled.executed to xth.cli, xth.connector.impl.saxon;
+    exports com.evolvedbinary.xth.tsom.result.impl.executed to xth.cli, xth.connector.impl.saxon;
 
     requires java.xml;
     requires static org.jspecify;

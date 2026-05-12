@@ -2,12 +2,10 @@ package com.evolvedbinary.xth.cli;
 
 import com.evolvedbinary.xth.tsom.TestCase;
 import com.evolvedbinary.xth.tsom.TestSet;
-import com.evolvedbinary.xth.tsom.result.TestCaseResult;
-import com.evolvedbinary.xth.tsom.result.TestCaseResultError;
-import com.evolvedbinary.xth.tsom.result.TestCaseResultFailure;
-import com.evolvedbinary.xth.tsom.result.TestCaseResultPass;
-import com.evolvedbinary.xth.tsom.result.TestCaseResultSkipped;
+import com.evolvedbinary.xth.tsom.result.*;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.function.Consumer;
 
 import static com.evolvedbinary.xth.util.TimeUtil.toHumaneString;
@@ -21,13 +19,29 @@ public abstract class AbstractTestResultsListenerPrinter implements TestResultsL
     }
 
     @Override
-    public void result(final TestSet testSet, final TestCase testCase, final TestCaseResult testCaseResult) {
+    public void testSetStarted(final TestSet testSet, final Instant timestamp) {
+        // no-op
+    }
+
+    @Override
+    public void testSetFinished(final TestSet testSet, final Instant timestamp) {
+        // no-op
+    }
+
+    @Override
+    public void testCaseStarted(final TestSet testSet, final TestCase testCase, final Instant timestamp) {
+        // no-op
+    }
+
+    @Override
+    public void testCaseFinished(final TestSet testSet, final TestCase testCase, final Instant timestamp, final TestCaseResult testCaseResult) {
         final String resultStr = switch (testCaseResult) {
             case TestCaseResultPass testCaseResultPass -> "Pass";
             case TestCaseResultFailure testCaseResultFailure -> "FAIL"; // TODO(AR) add failure info?
             case TestCaseResultError testCaseResultError -> "ERROR";  // TODO(AR) add error info?
             case TestCaseResultSkipped testCaseResultSkipped -> "Skipped";  // TODO(AR) add reason info?
         };
-        printer.accept(String.format("%s / %s (%s): %s", testSet.getName(), testCase.getName(), toHumaneString(testCaseResult.getExecutionTime()), resultStr));
+        final Duration duration = Duration.between(testCaseResult.getProcessingStarted(), testCaseResult.getProcessingFinished());
+        printer.accept(String.format("%s / %s (%s): %s", testSet.getName(), testCase.getName(), toHumaneString(duration.toMillis()), resultStr));
     }
 }

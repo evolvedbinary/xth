@@ -15,6 +15,7 @@ import net.jcip.annotations.NotThreadSafe;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -82,7 +83,7 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
         final Path baseUri = catalogInfo.catalogFile.getParent();
         final SpecificationVersion defaultSpecification = catalogInfo.defaultSpecification;
         final List<EnvironmentDefinition> globalEnvironments = tsGlobalEnvironments.remove(parseId);
-        stsTestCaseExecutor.fork(new Callable() {
+        stsTestCaseExecutor.fork(new Callable<Void>() {
             @Override
             public Void call() throws ConnectorException {
                 connector.initialize(baseUri, defaultSpecification, globalEnvironments);
@@ -102,8 +103,20 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
         final TestSetInfo testSetInfo = new TestSetInfo(testSet);
         tsTestSets = safePutMap(tsTestSets, parseId, testSetId, testSetInfo);
 
+        final Instant testSetStarted = Instant.now();
+
+        // start a thread to notify test result listeners that we have started executing a test set
+        stsTestCaseExecutor.fork(new Callable<Void>() {
+            @Override
+            public Void call() {
+                emitTestSetStarted(testSet, testSetStarted);
+                return null;
+            }
+        });
+
         // start a thread to calculate whether the dependencies of this Test Set are met
-        stsTestCaseExecutor.fork(new Callable() {
+        stsTestCaseExecutor.fork(new Callable<Void>() {
+            @Override
             public Void call() throws ConnectorException {
 
                 // make sure the connector is initialized before we proceed
@@ -113,6 +126,7 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
                 final List<Dependency<?>> testSetUnmetDependencies = connector.supports(testSet.getDependencies());
                 // TODO(AR) pass on the details of the testSetUnmetDependencies to the TestCaseResultSkipped class
                 testSetInfo.dependenciesMet.set(testSetUnmetDependencies.isEmpty() ? DependenciesCheckState.MET : DependenciesCheckState.NOT_MET);
+
                 return null;
             }
         });
@@ -122,9 +136,12 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
     public void testCase(final UUID parseId, final UUID testSetId, final UUID testCaseId, final TestCase testCase) {
         final TestSetInfo testSetInfo = tsTestSets.get(parseId).get(testSetId);
 
-        stsTestCaseExecutor.fork(new Callable() {
+        stsTestCaseExecutor.fork(new Callable<Void>() {
             @Override
             public Void call() throws ConnectorException {
+
+                final Instant testCaseStarted = Instant.now();
+                emitTestCaseStarted(testSetInfo.testSet, testCase, testCaseStarted);
 
                 // make sure the dependency check of the Test Set has complete
                 final DependenciesCheckState testSetDependenciesMet = waitUntil(testSetInfo.dependenciesMet::get, state -> state != DependenciesCheckState.UNKNOWN);
@@ -132,7 +149,8 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
                 // Are the dependencies of the Test Set met?
                 if (testSetDependenciesMet != DependenciesCheckState.MET) {
                     // dependencies for the Test Set are not met, we can skip all Test Cases in this Test Set
-                    emitTestResult(testSetInfo.testSet, testCase, new TestCaseResultSkippedImpl(String.format("Dependencies for the Test Set: %s have not been met by the Connector", testSetInfo.testSet.getName())));
+                    final Instant testCaseFinished = Instant.now();
+                    emitTestCaseFinished(testSetInfo.testSet, testCase, testCaseFinished, new TestCaseResultSkippedImpl(testCaseFinished, String.format("Dependencies for the Test Set: %s have not been met by the Connector", testSetInfo.testSet.getName())));
                     return null;
                 }
 
@@ -141,7 +159,8 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
                 if (!testCaseUnmetDependencies.isEmpty()) {
                     // dependencies for the Test Case are not met, we can skip this Test Case
                     // TODO(AR) pass on the details of the testCaseUnmetDependencies to the TestCaseResultSkipped class
-                    emitTestResult(testSetInfo.testSet, testCase, new TestCaseResultSkippedImpl(String.format("Dependencies for the Test Case: %s  have not been met by the Connector", testCase.getName())));
+                    final Instant testCaseFinished = Instant.now();
+                    emitTestCaseFinished(testSetInfo.testSet, testCase, testCaseFinished, new TestCaseResultSkippedImpl(testCaseFinished, String.format("Dependencies for the Test Case: %s  have not been met by the Connector", testCase.getName())));
                     return null;
                 }
 
@@ -149,7 +168,8 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
                 final TestCaseResult testCaseResult = connector.executeTestCase(testSetInfo.testSet, testCase);
 
                 // emit the result
-                emitTestResult(testSetInfo.testSet, testCase, testCaseResult);
+                final Instant testCaseFinished = Instant.now();
+                emitTestCaseFinished(testSetInfo.testSet, testCase, testCaseFinished, testCaseResult);
 
                 return null;
             }
@@ -187,19 +207,60 @@ public class TestCaseExecutionDispatcher implements ParserEventListener {
         }
     }
 
-    private void emitTestResult(final TestSet testSet, final TestCase testCase, final TestCaseResult testCaseResult) {
+    private void emitTestSetStarted(final TestSet testSet, final Instant timestamp) {
         if (listeners != null) {
             final Iterator<TestResultsListener> iterator = listeners.iterator();
             while (iterator.hasNext()) {
                 final TestResultsListener testResultsListener = iterator.next();
-                testResultsListener.result(testSet, testCase, testCaseResult);
+                testResultsListener.testSetStarted(testSet, timestamp);
+            }
+        }
+    }
+
+    private void emitTestCaseStarted(final TestSet testSet, final TestCase testCase, final Instant timestamp) {
+        if (listeners != null) {
+            final Iterator<TestResultsListener> iterator = listeners.iterator();
+            while (iterator.hasNext()) {
+                final TestResultsListener testResultsListener = iterator.next();
+                testResultsListener.testCaseStarted(testSet, testCase, timestamp);
+            }
+        }
+    }
+
+    private void emitTestCaseFinished(final TestSet testSet, final TestCase testCase, final Instant timestamp, final TestCaseResult testCaseResult) {
+        if (listeners != null) {
+            final Iterator<TestResultsListener> iterator = listeners.iterator();
+            while (iterator.hasNext()) {
+                final TestResultsListener testResultsListener = iterator.next();
+                testResultsListener.testCaseFinished(testSet, testCase, timestamp, testCaseResult);
+            }
+        }
+    }
+
+    private void emitTestSetFinished(final TestSet testSet, final Instant timestamp) {
+        if (listeners != null) {
+            final Iterator<TestResultsListener> iterator = listeners.iterator();
+            while (iterator.hasNext()) {
+                final TestResultsListener testResultsListener = iterator.next();
+                testResultsListener.testSetFinished(testSet, timestamp);
             }
         }
     }
 
     @Override
     public void endParseTestSet(final UUID parseId, final UUID testSetId) {
-        tsTestSets.get(parseId).remove(testSetId);
+        final TestSetInfo testSetInfo = tsTestSets.get(parseId).remove(testSetId);
+
+        final Instant testSetFinished = Instant.now();
+
+        // start a thread to notify test result listeners that we have finished executing a test set
+        stsTestCaseExecutor.fork(new Callable<Void>() {
+            @Override
+            public Void call() {
+                emitTestSetFinished(testSetInfo.testSet, testSetFinished);
+                return null;
+            }
+        });
     }
 
     @Override

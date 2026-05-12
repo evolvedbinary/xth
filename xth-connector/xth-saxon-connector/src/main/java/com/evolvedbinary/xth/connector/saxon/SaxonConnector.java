@@ -56,9 +56,12 @@ import com.evolvedbinary.xth.tsom.dependency.impl.SpecificationVersionDescriptio
 import com.evolvedbinary.xth.tsom.dependency.impl.XmlVersionDependencyImpl;
 import com.evolvedbinary.xth.tsom.dependency.impl.XsdVersionDependencyImpl;
 import com.evolvedbinary.xth.tsom.result.TestCaseResult;
-import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultErrorImpl;
-import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultFailureImpl;
-import com.evolvedbinary.xth.tsom.result.impl.TestCaseResultPassImpl;
+import com.evolvedbinary.xth.tsom.result.impl.compiled.CompiledTestCaseResultErrorImpl;
+import com.evolvedbinary.xth.tsom.result.impl.compiled.CompiledTestCaseResultFailureImpl;
+import com.evolvedbinary.xth.tsom.result.impl.compiled.CompiledTestCaseResultPassImpl;
+import com.evolvedbinary.xth.tsom.result.impl.compiled.executed.CompiledExecutedTestCaseResultErrorImpl;
+import com.evolvedbinary.xth.tsom.result.impl.compiled.executed.CompiledExecutedTestCaseResultFailureImpl;
+import com.evolvedbinary.xth.tsom.result.impl.compiled.executed.CompiledExecutedTestCaseResultPassImpl;
 import com.evolvedbinary.xth.util.IOUtil;
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
@@ -107,6 +110,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -287,6 +291,8 @@ public class SaxonConnector implements Connector {
 
     @Override
     public TestCaseResult executeTestCase(final TestSet testSet, final TestCase testCase) throws ConnectorException {
+        final Instant processingStarted = Instant.now();
+
         final List<SpecificationDependency> testCaseSpecifications = getTestCaseSpecifications(testSet, testCase);
         final SpecificationVersion[] xpathXqueryVersion = getXPathAndXQueryVersion(testCaseSpecifications, defaultSpecification);
         final SpecificationVersion xpathVersion = xpathXqueryVersion[0];
@@ -322,18 +328,17 @@ public class SaxonConnector implements Connector {
 
         // Compile the test query
         final XQueryExecutable xqueryExecutable;
-        long testCompilationEndTime;
-        final long testCompilationStartTime = System.currentTimeMillis();
+        Instant compilationFinished;
+        final Instant compilationStarted = Instant.now();
         try {
             xqueryExecutable = xqueryCompiler.compile(xqueryTest);
-            testCompilationEndTime = System.currentTimeMillis();
+            compilationFinished = Instant.now();
         } catch (final SaxonApiException e) {
-            testCompilationEndTime = System.currentTimeMillis();
+            compilationFinished = Instant.now();
             if (e.getCause() instanceof XPathException) {
                 // XPathException occurred during compilation, check if it passes the Test Case's assertion
-                final long testCompilationDuration = testCompilationEndTime - testCompilationStartTime;
                 final EvaluationResult evaluationResult = EvaluationResult.failure(e, null);
-                return testAssertion(testCase, evaluationResult, testCompilationDuration);
+                return testAssertion(testCase, evaluationResult, processingStarted, compilationStarted, compilationFinished);
             } else {
                 throw new ConnectorException(String.format("Error when compiling test case: %s#%s due to: %s", testSet.getName(), testCase.getName(), e.getMessage()), e);
             }
@@ -351,20 +356,19 @@ public class SaxonConnector implements Connector {
         EvaluationResult evaluationResult;
         final FotsErrorReporter errorReporter = new FotsErrorReporter();
         xqueryEvaluator.setErrorReporter(errorReporter);
-        long testExecutionEndTime;
-        final long testExecutionStartTime = System.currentTimeMillis();
+        Instant executionFinished;
+        final Instant executionStarted = Instant.now();
         try {
             final XdmValue result = xqueryEvaluator.evaluate();
-            testExecutionEndTime = System.currentTimeMillis();
+            executionFinished = Instant.now();
             evaluationResult = EvaluationResult.success(result);
         } catch (final SaxonApiException e) {
-            testExecutionEndTime = System.currentTimeMillis();
+            executionFinished = Instant.now();
             evaluationResult = EvaluationResult.failure(e, errorReporter.errors);
         }
 
         // Test the assertion against the result of the query
-        final long testDuration = (testCompilationEndTime - testCompilationStartTime) + (testExecutionEndTime - testExecutionStartTime);
-        return testAssertion(testCase, evaluationResult, testDuration);
+        return testAssertion(testCase, evaluationResult, processingStarted, compilationStarted, compilationFinished, executionStarted, executionFinished);
     }
 
     private static SpecificationVersion[] getXPathAndXQueryVersion(final List<SpecificationDependency> specificationDependencies, final SpecificationVersion defaultSpecification) {
@@ -444,19 +448,35 @@ public class SaxonConnector implements Connector {
         return specificationDependencies;
     }
 
-    private TestCaseResult testAssertion(final TestCase testCase, final EvaluationResult evaluationResult, final long testDuration) throws ConnectorException {
+    private TestCaseResult testAssertion(final TestCase testCase, final EvaluationResult evaluationResult, final Instant processingStarted, final Instant compilationStarted, final Instant compilationFinished) throws ConnectorException {
         try {
             final Assertion assertion = testCase.getResult();
             final boolean assertionHolds = testAssertion(assertion, evaluationResult);
             if (assertionHolds) {
-                return new TestCaseResultPassImpl(testDuration);
+                return new CompiledTestCaseResultPassImpl(processingStarted, compilationStarted, compilationFinished, Instant.now());
             } else {
                 // TODO(AR) add failure information
-                return new TestCaseResultFailureImpl(testDuration);
+                return new CompiledTestCaseResultFailureImpl(processingStarted, compilationStarted, compilationFinished, Instant.now());
             }
         } catch (final SaxonApiException e) {
             // TODO(AR) add error information
-            return new TestCaseResultErrorImpl(testDuration);
+            return new CompiledTestCaseResultErrorImpl(processingStarted, compilationStarted, compilationFinished, Instant.now());
+        }
+    }
+
+    private TestCaseResult testAssertion(final TestCase testCase, final EvaluationResult evaluationResult, final Instant processingStarted, final Instant compilationStarted, final Instant compilationFinished, final Instant executionStarted, final Instant executionFinished) throws ConnectorException {
+        try {
+            final Assertion assertion = testCase.getResult();
+            final boolean assertionHolds = testAssertion(assertion, evaluationResult);
+            if (assertionHolds) {
+                return new CompiledExecutedTestCaseResultPassImpl(processingStarted, compilationStarted, compilationFinished, executionStarted, executionFinished, Instant.now());
+            } else {
+                // TODO(AR) add failure information
+                return new CompiledExecutedTestCaseResultFailureImpl(processingStarted, compilationStarted, compilationFinished, executionStarted, executionFinished, Instant.now());
+            }
+        } catch (final SaxonApiException e) {
+            // TODO(AR) add error information
+            return new CompiledExecutedTestCaseResultErrorImpl(processingStarted, compilationStarted, compilationFinished, executionStarted, executionFinished, Instant.now());
         }
     }
 
