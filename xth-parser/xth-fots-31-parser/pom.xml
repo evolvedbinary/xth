@@ -113,9 +113,6 @@
                             <args>
                                 <arg>-Xph-default-locale</arg>
                                 <arg>en_GB</arg>
-<!--                                <arg>-Xph-annotate</arg>-->
-<!--                                <arg>jspecify</arg>-->
-<!--                                <arg>no-annotate-mutable-return</arg>-->
                                 <arg>-Xph-code-quality</arg>
                                 <arg>-Xph-fields-private</arg>
                                 <arg>-Xph-bean-validation11</arg>
