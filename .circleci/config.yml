@@ -1,0 +1,52 @@
+version: 2.1
+
+# Reusable build steps (these are commands that would run on every OS)
+commands:
+  build_and_test:
+    steps:
+      - checkout
+      - run:
+          name: Build and test
+          command: mvn -B verify
+
+jobs:
+
+  # Linux
+  build-linux:
+    docker:
+      - image: cimg/openjdk:25.0
+    steps:
+      - build_and_test
+
+  # macOS
+  build-macos:
+    macos:
+      xcode: "16.3.0"
+    steps:
+      - run:
+          name: Install Java 25
+          command: |
+            brew install openjdk@25
+            echo 'export PATH="/opt/homebrew/opt/openjdk@25/bin:$PATH"' >> "$BASH_ENV"
+      - build_and_test
+
+  # Windows
+  build-windows:
+    machine:
+      image: windows-server-2022-gui:current
+      shell: powershell.exe -ExecutionPolicy Bypass
+    resource_class: windows.medium
+    steps:
+      - run:
+          name: Install Java 25
+          command: |
+            choco install temurin25 -y --no-progress
+            refreshenv
+      - build_and_test
+
+workflows:
+  build-all-platforms:
+    jobs:
+      - build-linux
+      - build-macos
+      - build-windows
