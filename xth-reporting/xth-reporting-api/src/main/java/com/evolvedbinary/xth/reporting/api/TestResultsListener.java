@@ -1,16 +1,18 @@
-package com.evolvedbinary.xth.cli;
+package com.evolvedbinary.xth.reporting.api;
 
 import com.evolvedbinary.xth.tsom.TestCase;
 import com.evolvedbinary.xth.tsom.TestSet;
 import com.evolvedbinary.xth.tsom.result.TestCaseResult;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.time.Instant;
 
 /**
  * Implementation of this interface listen for results
  * of tests that are being executed.
  */
-public interface TestResultsListener {
+public interface TestResultsListener extends Closeable {
 
     /**
      * Called when execution of a set of test cases starts.
@@ -46,4 +48,8 @@ public interface TestResultsListener {
      * @param testCaseResult the result from executing the test case.
      */
     void testCaseFinished(TestSet testSet, TestCase testCase, Instant timestamp, TestCaseResult testCaseResult);
+
+    @Override
+    default void close() throws IOException {
+    }
 }

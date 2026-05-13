@@ -5,6 +5,8 @@ import com.evolvedbinary.xth.configuration.XthProperties;
 import com.evolvedbinary.xth.connector.api.Connector;
 import com.evolvedbinary.xth.connector.api.ConnectorException;
 import com.evolvedbinary.xth.connector.util.ConnectorFactory;
+import com.evolvedbinary.xth.reporting.api.TestResultsListener;
+import com.evolvedbinary.xth.reporting.otr.TestResultsListenerJUnitXml;
 import com.evolvedbinary.xth.parser.api.ParserEventListener;
 import com.evolvedbinary.xth.parser.api.ParserException;
 import com.evolvedbinary.xth.parser.api.TestSuiteParser;
@@ -117,7 +119,10 @@ public class CliMain {
         try (final StructuredTaskScope<Object, Void> testSuiteScope = StructuredTaskScope.open(StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow(), config -> config.withThreadFactory(testSuiteThreadFactory))) {
             // TODO(AR) do stuff
             final Connector connector = connectors.get(0); // TODO(AR) allow for multiple connectors
-            final List<TestResultsListener> testResultsListeners = List.of(new TestResultsListenerPrintStream(stdOut));
+            final List<TestResultsListener> testResultsListeners = List.of(
+                    new TestResultsListenerPrintStream(stdOut),
+                    new TestResultsListenerJUnitXml(configuration.outputDir())
+            );
             final StructuredTaskScope.Subtask<Object> parse = testSuiteScope.fork(new ExecuteTestSuiteTask(connector, testSuiteParser, testResultsListeners));
 
             try {

@@ -2,6 +2,7 @@ package com.evolvedbinary.xth.cli;
 
 import com.evolvedbinary.xth.connector.api.Connector;
 import com.evolvedbinary.xth.connector.api.ConnectorException;
+import com.evolvedbinary.xth.reporting.api.TestResultsListener;
 import com.evolvedbinary.xth.parser.api.ParserEventListener;
 import com.evolvedbinary.xth.tsom.Dependency;
 import com.evolvedbinary.xth.tsom.EnvironmentDefinition;

@@ -3,6 +3,7 @@ package com.evolvedbinary.xth.cli;
 import com.evolvedbinary.xth.connector.api.Connector;
 import com.evolvedbinary.xth.parser.api.ParserException;
 import com.evolvedbinary.xth.parser.api.TestSuiteParser;
+import com.evolvedbinary.xth.reporting.api.TestResultsListener;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -41,7 +42,19 @@ class ExecuteTestSuiteTask implements Callable<Void> {
                 throw new ExecuteTestSuiteTaskException(e);
             }
 
-            testCaseScope.join();
+            try {
+                testCaseScope.join();
+            } finally {
+                if (testResultsListeners != null) {
+                    for (final TestResultsListener testResultsListener : testResultsListeners) {
+                        try {
+                            testResultsListener.close();
+                        } catch (final IOException e) {
+                            // don't suppress the original exception
+                        }
+                    }
+                }
+            }
         }
 
         return null;
