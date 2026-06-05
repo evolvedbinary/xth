@@ -185,13 +185,13 @@ public class TestSuiteExecutionDispatcher implements ParserEventListener {
         final Instant testSetStarted = Instant.now();
 
         // start a thread to notify test result listeners that we have started executing a test set
-        stsTestSuiteExecutor.fork(new Callable<Void>() {
-            @Override
-            public Void call() {
+//        stsTestSuiteExecutor.fork(new Callable<Void>() {
+//            @Override
+//            public Void call() {
                 emitTestSetStarted(testSuite, testSet, testSetStarted);
-                return null;
-            }
-        });
+//                return null;
+//            }
+//        });
 
         // start a thread to calculate whether the dependencies of this Test Set are met
         stsTestSuiteExecutor.fork(new Callable<Void>() {
