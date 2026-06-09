@@ -98,7 +98,7 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <configuration>
                     <ignoredUnusedDeclaredDependencies>
-                        <ignoredUnusedDeclaredDependency>com.sun.xml.bind:jaxb-impl:jar:${jaxb.impl.version}:runtime</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>com.sun.xml.bind:jaxb-impl:jar:${jaxb.impl.version}</ignoredUnusedDeclaredDependency>
                     </ignoredUnusedDeclaredDependencies>
                 </configuration>
             </plugin>

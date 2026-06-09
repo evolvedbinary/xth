@@ -141,8 +141,11 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <configuration>
                     <ignoredUnusedDeclaredDependencies>
-                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-saxon-connector:jar:${project.version}:runtime</ignoredUnusedDeclaredDependency>
-                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-qt3tests-parser:jar:${project.version}:runtime</ignoredUnusedDeclaredDependency>
+                        <!-- NOTE(AR) the following are loaded via Java Service Loader, but we declare them as dependencies above to explicitly document the relationship -->
+                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-qt3tests-parser:jar:${project.version}</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-reporting-otr:jar:${project.version}</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-reporting-print:jar:${project.version}</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>com.evolvedbinary.xth:xth-saxon-connector:jar:${project.version}</ignoredUnusedDeclaredDependency>
                     </ignoredUnusedDeclaredDependencies>
                 </configuration>
             </plugin>

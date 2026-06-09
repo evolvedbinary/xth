@@ -55,12 +55,22 @@
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>xth-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>xth-reporting-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.opentest4j.reporting</groupId>
             <artifactId>open-test-reporting-events</artifactId>
+            <version>${otr.reporting.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.opentest4j.reporting</groupId>
+            <artifactId>open-test-reporting-schema</artifactId>
             <version>${otr.reporting.version}</version>
         </dependency>
         <dependency>

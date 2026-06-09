@@ -62,11 +62,14 @@
             <artifactId>xth-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- NOTE(AR) uncomment when we implement the Elemental connector in this module -->
+        <!--
         <dependency>
             <groupId>xyz.elemental.fork.org.exist-db</groupId>
             <artifactId>exist-core</artifactId>
             <version>${elemental.version}</version>
         </dependency>
+        -->
     </dependencies>
 
     <build>
