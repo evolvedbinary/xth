@@ -1,5 +1,6 @@
 # X Test Harness
 
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/evolvedbinary/xth/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/evolvedbinary/xth/tree/main)
 [![Java 25](https://img.shields.io/badge/java-25-blue.svg)](https://adoptopenjdk.net/)
 [![License](https://img.shields.io/badge/license-BSL%201.1-blue.svg)](https://spdx.org/licenses/BUSL-1.1.html)
 [![Slack](https://img.shields.io/badge/xml.com-slack-3e103f.svg)](https://join.slack.com/t/xmlcom/shared_invite/zt-ebhux9sm-bkyxD0alWjgtvcE8zzcHZQ)
