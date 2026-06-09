@@ -165,7 +165,7 @@ public class QT3TestsParser extends AbstractTestSuiteParser implements TestSuite
 
     @Override
     public String getParserName() {
-        return QT3TestsConstants.CATALOG_TEST_SUITE + " " + QT3TestsConstants.CATALOG_VERSION;
+        return "QT3 Tests 1.0";
     }
 
     @Override
