@@ -51,6 +51,9 @@
     <properties>
         <jaxb.api.version>4.0.2</jaxb.api.version>
         <jaxb.impl.version>4.0.5</jaxb.impl.version>
+
+        <qt3tests.schema.dir>${project.build.directory}/generated-sources/qt3tests</qt3tests.schema.dir>
+        <qt3tests.github.raw.url>https://raw.githubusercontent.com/w3c/qt3tests/refs/heads/master</qt3tests.github.raw.url>
     </properties>
 
     <dependencies>
@@ -102,23 +105,36 @@
                     </ignoredUnusedDeclaredDependencies>
                 </configuration>
             </plugin>
+
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-scm-plugin</artifactId>
+                <groupId>io.github.download-maven-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>2.1.0</version>
                 <executions>
                     <execution>
-                        <id>clone-qt3-schema</id>
+                        <id>download-catalog-schema</id>
                         <phase>generate-sources</phase>
                         <goals>
-                            <goal>checkout</goal>
+                            <goal>wget</goal>
                         </goals>
                         <configuration>
-                            <connectionUrl>scm:git:https://github.com/w3c/qt3tests.git</connectionUrl>
-                            <includes>catalog-schema.xsd,xml.xsd</includes>
-                            <checkoutDirectory>target/checkout/qt3tests</checkoutDirectory>
+                            <url>${qt3tests.github.raw.url}/catalog-schema.xsd</url>
+                            <outputDirectory>${qt3tests.schema.dir}</outputDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>download-catalog-schema-xml</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>${qt3tests.github.raw.url}/xml.xsd</url>
+                            <outputDirectory>${qt3tests.schema.dir}</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
+
             </plugin>
 
             <plugin>
@@ -128,12 +144,12 @@
                 <executions>
                     <execution>
                         <id>generate-qt3-classes</id>
-                        <phase>generate-sources</phase>
+                        <phase>process-sources</phase>
                         <goals>
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <schemaDirectory>target/checkout/qt3tests</schemaDirectory>
+                            <schemaDirectory>${qt3tests.schema.dir}</schemaDirectory>
                             <schemaIncludes>
                                 <schemaInclude>catalog-schema.xsd</schemaInclude>
                             </schemaIncludes>
